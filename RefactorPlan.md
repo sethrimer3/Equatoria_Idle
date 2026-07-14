@@ -4,7 +4,7 @@
 **Baseline branch:** `main`  
 **Baseline build:** `332`  
 **Baseline lifecycle commit:** `938315712323aeedbe957a92fac7647eff8670c3`  
-**Status:** Active implementation plan  
+**Status:** Phase Three complete; Phase Four proposed (planning only)
 **Compatible agents:** Codex, Claude, or another repository-capable coding agent
 
 ---
@@ -1153,3 +1153,353 @@ exercise boss loss/restart, boss victory, and Horizon/Nadir/True/ALIVEN/Life zon
 starting any separate refactor phase.
 
 Do not remove the planning, evidence, checklist, matrix, findings, validation, ideas, or work-log sections above.
+
+---
+
+## Phase Four — Typed Encounter Body Profiles
+
+**Planning baseline date:** 2026-07-13
+**Baseline branch:** `main`
+**Baseline build:** `333`
+**Baseline commit:** `18d1f5c865a60c2db1157af2e7f62fcf3cc2aff5`
+**Baseline working tree:** Clean; `main` matched `origin/main`
+**Status:** Proposed; do not implement during the planning run
+
+### Decision
+
+Another narrowly scoped refactor phase is justified.
+
+Phase Four should add two explicit, compiler-checked semantic body profiles to the existing
+`RpgEncounterCollections` owner:
+
+- bodies corrected when Verdure walls are regenerated after a resize; and
+- living bodies considered when floating RPG overlay controls decide whether to fade.
+
+This is not a continuation of Phase Three's ownership or reset migration. Phase Three is complete:
+the 74 arrays already have one owner, stable identity, shared broad contexts, and tested reset
+profiles. Phase Four should use that completed owner to remove two remaining local membership lists
+whose semantics are narrower than update, draw, targeting, wave, or reset membership.
+
+The strongest reason to proceed is the overlay-fade path. `updateOverlayFadeAlpha()` currently
+constructs a new 42-entry `enemyArrays` array on every draw call. The Verdure resize path separately
+maintains a 39-entry list and casts the complete nested list to a broad structural array type. Both
+lists are correct enough to preserve first, but neither gives the compiler a named place to require
+classification when a new positioned enemy family is added.
+
+### Current-State Confirmation
+
+The planning run confirmed:
+
+- branch: `main`;
+- build: `333` from `src/buildInfo.ts`;
+- baseline commit: `18d1f5c` (`Auto-sync 2026-07-13 14:58:04`), containing only the updated
+  application icon;
+- recent refactor commits: `f8d227c` marked Phase Three delivery complete, and `5661a2d` recorded
+  the completed encounter-collection phase report;
+- local `main` and `origin/main` had no ahead/behind divergence;
+- the working tree was clean before and after baseline validation;
+- no source or build-number change is part of this planning run.
+
+Phase Three's unlocked-save manual checks remain unavailable from the clean checkout. Do not
+reinterpret that missing fixture as incomplete Phase Three implementation. The reproducible test,
+build, and desktop checks below are the practical validation completed during this planning run.
+
+### Evidence
+
+#### Per-frame overlay membership allocation
+
+`src/render/rpg/rpg-render-draw.ts::updateOverlayFadeAlpha()` declares `enemyArrays` inside the
+per-frame function. The literal currently contains 42 canonical body collections, then performs a
+nested scan until an overlap is found.
+
+Consequences:
+
+- one temporary array is allocated on every draw call whenever this function runs;
+- membership is maintained independently from the canonical encounter owner;
+- a newly added living body can update and draw correctly yet fail to fade a control that it
+  visually overlaps;
+- the body filter (`hp ?? 1`) and the separate player/boss handling are behavior that must be
+  characterized before migration.
+
+The overlay rectangle list returned by the DOM bridge is a separate concern. Phase Four must not
+claim that the whole overlay path becomes allocation-free; its narrow performance result is removal
+of the redundant per-frame collection-list allocation.
+
+#### Verdure resize membership is independently maintained
+
+`src/render/rpg/rpg-render.ts::rebuildVerdureBoundsForResize()` declares a separate 39-collection
+body list. It pushes the player first, then repositions each listed enemy outside regenerated walls,
+zeros optional velocity components, and finally calls specialized `clearVerdurePlants()` cleanup.
+
+Consequences:
+
+- the list is manually synchronized with the enemy inventory;
+- the broad `as Array<Array<{ x; y; vx?; vy? }>>` cast weakens compiler pressure at the point where
+  membership is authored;
+- omission of a future Verdure-capable positioned family can leave it embedded in regenerated wall
+  geometry;
+- this list intentionally differs from the overlay profile and must not be replaced by one generic
+  “all enemies” list.
+
+#### The canonical owner is now a safe seam
+
+`src/render/rpg/rpg-encounter-collections.ts` already provides:
+
+- the canonical `RpgEncounterCollections` interface;
+- one factory with stable renderer-local arrays;
+- compiler-checked collection and reset-profile key tuples;
+- a Node-safe module with type-only entity imports;
+- focused tests for exact membership, identity, and context wiring.
+
+This makes static semantic key tuples a smaller change than introducing a registry, manager,
+visitor framework, or another collection owner.
+
+### Phase Four Objective
+
+Represent the two current body classifications as distinct typed profiles and migrate only their
+existing consumers, preserving exact membership and behavior while removing the overlay path's
+per-frame `enemyArrays` construction.
+
+Tentative exports:
+
+```ts
+export const RPG_VERDURE_RESIZE_BODY_KEYS = [/* exact current membership */] as const;
+export const RPG_OVERLAY_FADE_BODY_KEYS = [/* exact current membership */] as const;
+```
+
+Use a compile-time constraint derived from `RpgEncounterCollections` so:
+
+- Verdure keys can only name collections whose elements have `x`, `y`, and optional `vx`/`vy`;
+- overlay keys can only name collections whose elements have `x`, `y`, and an optional or required
+  numeric `hp` compatible with the existing living-body rule;
+- duplicate keys are rejected by tests;
+- the profiles do not create renderer-instance arrays or per-frame views.
+
+If TypeScript cannot express the heterogeneous indexed access cleanly without an unsafe production
+cast, prefer a small Node-safe helper with an explicit structural contract. Do not add `any`, a
+generic registry, reflection, or a callback abstraction that allocates closures in the draw loop.
+
+### Scope Boundaries
+
+#### Required
+
+1. Add exact typed profiles for current Verdure-resize and overlay-fade membership.
+2. Add characterization tests before changing either consumer.
+3. Migrate `rebuildVerdureBoundsForResize()` to the Verdure profile.
+4. Migrate `updateOverlayFadeAlpha()` to the overlay profile.
+5. Remove the per-frame `enemyArrays` literal and preserve short-circuit scan order.
+6. Preserve separate player and boss handling.
+7. Preserve the overlay living-body rule, interpolation constant, padding, and alpha bounds.
+8. Preserve Verdure push margins, velocity zeroing, wall regeneration order, player correction,
+   and specialized plant cleanup.
+9. Update the build number and only the repository maps/architecture documents whose stated
+   responsibilities actually change.
+
+#### Optional only when proven mechanical
+
+- Move a small pure overlap predicate into a Node-safe helper to make behavior directly testable.
+- Add a compile-time utility type for “collection keys whose element satisfies shape T” if it stays
+  local, readable, and produces no runtime code.
+
+#### Deferred
+
+- Other repeated draw inventories such as terrain lighting, influence points, wave-label overlap,
+  enemy barks, targeting, or weapon contexts.
+- Replacing `getOverlayFadeRects()` with a reusable DOM rectangle buffer.
+- General-purpose body iterators or visitors.
+- Unifying the two profiles.
+- Adding or removing any body family from current behavior without a reproduced defect.
+- Renderer decomposition, ECS conversion, generic registries, or changes to collection ownership.
+- Combat, targeting, draw-order, collision, field-space, wall-generation, or UI-design changes.
+
+### Required Characterization Tests
+
+Add tests before consumer migration.
+
+#### Profile membership
+
+- Assert the Verdure profile contains exactly the 39 collections currently listed in
+  `rebuildVerdureBoundsForResize()`.
+- Assert the overlay profile contains exactly the 42 collections currently listed in
+  `updateOverlayFadeAlpha()`.
+- Assert both profiles contain no duplicate keys.
+- Assert every key exists in `RPG_ENCOUNTER_COLLECTION_KEYS`.
+- Assert intentional differences explicitly, including Binary Ring, Nadir cube-point, and Stardust
+  membership in overlay fade but not Verdure resize.
+- Assert projectile, hazard, reward, visual-effect, spawn-queue, ALIVEN-group, Life-colony, and
+  Horizon-group collections remain excluded unless current source evidence says otherwise.
+
+#### Verdure behavior
+
+- Seed representative ordinary, gemstone, elite, polyomino, procedural, and fish bodies.
+- Verify every currently listed body is offered to the existing wall-push operation.
+- Verify an adjusted body receives the scratch output and optional `vx`/`vy` are zeroed.
+- Verify an unaffected body retains position and velocity.
+- Verify the player remains handled separately with the existing larger margin expression.
+- Verify `clearVerdurePlants()` remains caller-owned and is invoked after body correction.
+- Characterize that the function is a resize/regeneration path, not a per-frame update.
+
+#### Overlay behavior
+
+- Seed one representative body from each membership category and verify overlap selects the faded
+  target alpha.
+- Verify dead bodies (`hp <= 0`) do not trigger fading.
+- Verify bodies without an `hp` field retain the current `hp ?? 1` living behavior.
+- Verify player overlap and boss overlap remain separate and preserve their existing padding.
+- Verify no overlap returns the unfaded target.
+- Verify scan short-circuits after the first live overlap.
+- Verify the interpolation factor and 0.30 minimum alpha are unchanged.
+- Add a structural test or review assertion that the consumer no longer creates a local
+  collection-reference array each frame.
+
+#### Existing coverage
+
+Do not weaken the Phase Three collection tests. Run the encounter-collection, field-space,
+viewport, expanded-bounds, Verdure, draw, zone-isolation, and renderer lifecycle tests that exist at
+implementation time.
+
+### Implementation Sequence
+
+1. Read all current repository instructions and this entire plan.
+2. Confirm branch, build, working tree, upstream divergence, and commits after `18d1f5c`.
+3. Treat current source as authoritative if line numbers or memberships have changed.
+4. Run baseline typecheck, full tests, lint, web build, and desktop build.
+5. Copy the two current memberships into tests as explicit characterization expectations.
+6. Record every intentional inclusion and exclusion before editing production code.
+7. Add narrow structural utility types and the two static key tuples to the canonical collection
+   module, or a sibling Node-safe semantic-profile module if import direction requires it.
+8. Run the profile tests.
+9. Migrate only Verdure resize correction; run focused Verdure and collection tests.
+10. Migrate only overlay fading; verify no per-call collection-list literal remains and run focused
+    draw/field-space tests.
+11. Inspect generated JavaScript or the production source path enough to confirm the profiles are
+    module-static and no replacement allocation/callback closure was introduced in the draw loop.
+12. Run complete validation and practical browser/Electron smoke checks.
+13. Update build number and narrowly relevant living documentation.
+14. Review the full diff for behavior, ordering, allocations, casts, and unrelated changes.
+15. Record exact commands, exit codes, limitations, commit, push, and final tree status.
+16. Commit and push the implementation as one coherent phase, then stop.
+
+### Acceptance Criteria
+
+Phase Four is complete only when:
+
+- both semantic profiles have exact, named, tested membership;
+- the profiles are distinct and their differences are documented;
+- every profile key is compiler-checked against compatible canonical collection element shapes;
+- Verdure resize correction uses the canonical owner plus its named profile;
+- overlay fading uses the canonical owner plus its named profile;
+- no local per-frame array of encounter collection references remains in
+  `updateOverlayFadeAlpha()`;
+- current scan order and short-circuit behavior are preserved;
+- player, boss, dead-body, no-`hp`, padding, interpolation, and alpha semantics are preserved;
+- Verdure player margin, body margin, position correction, velocity reset, and plant cleanup are
+  preserved;
+- no canonical array is replaced and no new per-frame collection, object, closure, reflection, or
+  dynamic key discovery is introduced;
+- no collection is newly included or excluded without a failing regression and documented intended
+  behavior;
+- no save, settings, combat, target, draw-order, collision, field-space, or platform behavior
+  changes;
+- build number and relevant documentation are updated;
+- complete validation passes or every nonzero result is accurately classified;
+- the implementation is committed and pushed with a clean final working tree.
+
+### Validation Commands
+
+Run and report exact exit codes:
+
+```bash
+npm run typecheck
+npm test
+npm run lint
+npm run build
+npm run build:desktop
+```
+
+Also run focused tests for:
+
+- `rpg-encounter-collections`;
+- Verdure mechanics/geometry;
+- RPG field space, viewport, and expanded bounds;
+- any new pure overlay-profile helper.
+
+Browser smoke-test:
+
+- ordinary, elite, procedural, and fish bodies crossing registered floating controls;
+- a dead body under a control;
+- player and boss overlap behavior;
+- Verdure resize with active ordinary, polyomino, procedural, and fish enemies;
+- repeated resize without embedded bodies, stuck navigation, or plant-state leakage;
+- low-graphics mode and Equation-to-RPG re-entry;
+- console errors.
+
+Run the hidden Electron startup smoke after `npm run build:desktop`. Native Android/device
+validation is not required because this phase changes no platform branch or persistent state. Do
+not claim unavailable locked-zone or device coverage.
+
+### Risks and Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| A “shared” profile accidentally unifies different semantics | Keep two named tuples and test exact differences. |
+| A body family is added or removed during migration | Characterize current membership first; require a failing regression for behavioral changes. |
+| Heterogeneous array typing leads to `any` or broad casts | Use constrained key types or one narrow reviewed helper; reject `any`. |
+| Overlay scan order or early exit changes | Preserve tuple order and add short-circuit tests. |
+| Per-frame allocation is moved rather than removed | Inspect the draw path and keep profiles module-static; avoid mapped arrays and inline callback visitors. |
+| Verdure specialized cleanup is absorbed into a generic helper | Leave player correction, wall scratch state, and `clearVerdurePlants()` with the caller. |
+| Phase expands into every repeated enemy list | Enforce the required/deferred boundaries and stop after the two consumers. |
+| Auto-sync or user work appears during implementation | Recheck status/HEAD before edits and commit; preserve unrelated changes and never reset them. |
+
+### Model-Neutral Agent Instructions
+
+These instructions apply to Codex, Claude, and any repository-capable implementation agent.
+
+#### Before editing
+
+- Read `AGENTS.md`/`agents.md`, `CLAUDE.md`, the required repository maps and conventions, current
+  status/TODO, architecture/decisions, relevant `file_index.md` entries, and this plan in full.
+- Confirm Phase Three is complete. Do not recreate its factory, ownership migration, reset profiles,
+  matrix, or tests.
+- Verify current code instead of trusting the planning line numbers or counts.
+- Preserve unrelated and auto-sync work.
+- Record baseline branch, build, HEAD, upstream relation, working tree, and validation.
+
+#### During implementation
+
+- Add characterization tests before production edits.
+- Keep the profiles semantic and separate; do not invent “all bodies.”
+- Use the existing canonical collections object and stable array identities.
+- Preserve exact membership unless a behavior defect is reproduced first.
+- Keep the per-frame loop direct and allocation-conscious.
+- Do not introduce `any`, reflection, proxies, object-key discovery, registries, service locators, or
+  generalized visitor infrastructure.
+- Do not alter combat, targeting, draw order, wall geometry, save data, settings, or UI appearance.
+- Run focused tests after each consumer migration.
+- Put broader cleanup ideas in this plan as deferred evidence; do not implement them.
+
+#### Before delivery
+
+- Increment `BUILD_NUMBER` once because implementation will change code; do not bump save version.
+- Update only documentation whose responsibilities or status changed.
+- Run every validation command and report exact exit codes.
+- Distinguish introduced, pre-existing, environmental, and unverified results.
+- Review the diff and confirm only Phase Four implementation/documentation is included.
+- Commit and push according to repository instructions.
+- Report branch, build, commit, push result, and final working-tree/upstream status.
+- Stop after Phase Four.
+
+### Planning-Run Validation
+
+| Command / check | Result | Classification |
+|---|---:|---|
+| `npm run typecheck` | Exit 0 | Passed |
+| `npm test` (restricted first attempt) | Exit 1 | Environmental: Vitest/esbuild could not read `vitest.config.ts` through the sandbox wrapper |
+| `npm test` (approved rerun) | Exit 0; 73 files, 1480 tests | Passed; existing Boss MIDI invalid-URL stderr remained |
+| `npm run lint` | Exit 0 | Passed |
+| `npm run build` | Exit 0; 441 modules | Passed with existing chunk-size warning |
+| `npm run build:desktop` | Exit 0; 441 modules | Passed with existing chunk-size and plugin-timing warnings |
+| Hidden Electron launch | Stayed alive for 8 seconds | Passed startup smoke; the tailed runtime log contained older 2026-06-29 missing-frame warnings, not fresh failure evidence |
+| Unlocked special-zone/boss manual smoke | Not run | Fixture unavailable from clean checkout; not claimed |
+
+No implementation from Phase Four was performed during this planning run.
