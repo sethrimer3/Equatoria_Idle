@@ -2122,3 +2122,290 @@ planning.
 - Phase Five changed no targeting, damage callback API, weapon submodule context/factory, crafted
   post-hit hook, reward, wave-completion, save, setting, UI, audio, or platform behavior. Phases One
   through Four were not modified. No Phase Six was planned or begun.
+
+---
+
+## Phase Six — Typed Codex Damage Modifier Policy
+
+### Planning Baseline and Decision
+
+Phase Six is justified as a narrow, behavior-preserving refactor at the damage-factory boundary.
+Planning was performed on 2026-07-13 from clean `main` at `9216f68` (Build 335), matching
+`origin/main` with ahead 0 / behind 0. No implementation file was changed during planning.
+
+This phase is distinct from the completed work:
+
+- Phase One centralized encounter lifecycle/reset orchestration.
+- Phase Two established canonical encounter collection ownership.
+- Phase Three introduced typed reset profiles.
+- Phase Four completed typed encounter body profiles and the closed Verdure/overlay work.
+- Phase Five derived attack contexts from canonical collections and extracted readiness policy.
+- Phase Six changes only how `createDamageFns()` explicitly classifies and applies the existing
+  Codex damage multiplier. It does not consolidate renderer damage contexts or change attacks.
+
+The evidence does not justify a generic damage dispatcher or a broad attack-context rewrite.
+Although `RpgTargetingCtx`, `RpgPlayerAttackCtx`, and `RpgWeaponCtx` repeat damage signatures, their
+supplemental boss, Life, ALIVEN, Verdure, body-target, and visual responsibilities differ. Making
+those contexts share a broad runtime service would enlarge their contracts and repeat the kind of
+scope explicitly excluded from Phase Five. Keep those interfaces and renderer wiring unchanged.
+
+### Current-Code Evidence
+
+1. `src/render/rpg/rpg-damage.ts::createDamageFns()` (line 73 at planning time) is already the
+   factory and behavioral owner for 54 returned damage callbacks.
+2. At lines 564-583, 37 callbacks are selected by a `Record<string, string>`, iterated through
+   `Object.entries()`, recovered through `keyof` plus `(...args: unknown[])` casts, and written back
+   through a second `Record<string, unknown>` cast. The wrapper mutates `args[1]` before forwarding.
+3. The string inventory is not checked against the factory return type. A renamed, removed, or
+   newly eligible callback can compile while silently losing or gaining the Codex multiplier.
+4. The current 37 participating callbacks are the main-body families for laser; sapphire; emerald;
+   amber; void; quartz; ruby; sunstone; citrine; iolite; amethyst; diamond; nullstone; fracteryl;
+   eigenstein; three polyomino families; dust wisp; ribbon worm; lantern moth; eye stalk; jellyfish;
+   cloth ghost; plant turret; gear insect; spider crawler; mote swarm; shadow hand; and all eight
+   fish families.
+5. The other 17 factory callbacks are currently excluded and must remain excluded:
+   `damageMissile`, `damageAmberShard`, `damageQuartzSpike`, `damageRubyBolt`,
+   `damageCitrineBolt`, `damageAmethystShard`, `damageDiamondShard`, `damageVoidTendril`,
+   `damageFracterylShard`, `damageBinaryRingEnemy`, `damageNadirCubePointEnemy`,
+   `damageEliteEnemy`, `damageAlivenParticle`, `damageEliteJellyfishEnemy`,
+   `damagePlantProjectile`, `damageHorizonPentagonReal`, and `damageHorizonMissile`.
+6. The test suite has one direct `createDamageFns()` test,
+   `horizon-pentagon-damage.test.ts`, but no test characterizes the 37/17 Codex policy, its type-id
+   mapping, live multiplier lookup, optional-hook fallback, or preservation of callback arguments
+   and side effects.
+7. `rpg-render.ts` supplies a live multiplier getter based on `lifetimeKillsByType` at lines
+   681-686. The multiplier must therefore continue to be read at hit time, not cached at factory
+   creation.
+
+Current source is authoritative. The implementing agent must recalculate the 54/37/17 counts and
+record any intervening change before editing rather than forcing these planning counts onto newer
+code.
+
+### Objective and Behavioral Contract
+
+Replace the reflective string-key mutation in `createDamageFns()` with an explicit, typed Codex
+damage policy whose membership is compiler-checked against the factory callbacks and whose runtime
+application uses direct property references only.
+
+Preserve exactly:
+
+- all 54 callback names, parameter lists, return values, and observable function behavior;
+- the exact 37 participating callback-to-Codex-type mappings and 17 exclusions listed above;
+- multiplication of the raw-damage argument before the existing entity-specific calculation;
+- one live `getCodexDamageMultiplier(typeId)` lookup per participating hit when the hook exists;
+- multiplier `1` when the hook is absent;
+- DEF, pierce, shield, minimum-damage, invulnerability, hit-flash, death, split, swap, and HP rules;
+- `recordDps` and `onEnemyHit` timing, values, colors, and blocked flags;
+- current treatment of projectiles, shards, tendrils, elites, Binary Ring, Nadir, ALIVEN, Horizon,
+  and plant projectiles as Codex-unmodified factory callbacks;
+- the renderer's existing supplemental wrappers for boss, Life, ALIVEN, and Verdure damage;
+- current callback identity lifetime: functions are composed once per `createDamageFns()` call.
+
+### Proposed Ownership Boundary
+
+Keep ownership in `rpg-damage.ts`:
+
+- a typed, exported policy value names the exact participating callback keys and their existing
+  Codex type ids;
+- a typed factory-result contract describes the 54 callbacks;
+- `createDamageFns()` applies the policy through explicit callback properties and direct policy
+  property reads;
+- tests may enumerate the exported policy to prove exhaustive membership, but production code must
+  not iterate keys, reflect over the object, mutate functions after composition, or dynamically
+  discover callbacks.
+
+The implementation may use a small scalar helper that accepts `(typeId, rawDamage)` and returns the
+scaled number. It must not use a variadic forwarding wrapper because rest arguments allocate on the
+combat hot path and obscure signatures. Prefer explicit typed callback wrappers in the one-time
+return composition, even if that is more verbose.
+
+### Scope
+
+In scope:
+
+- `src/render/rpg/rpg-damage.ts`;
+- a focused Node-safe characterization test under `src/render/rpg/__tests__/`;
+- Build 336 if the authoritative baseline remains Build 335;
+- this plan and only living documentation whose file responsibility or current status changes.
+
+Permitted structural changes:
+
+- introduce an explicit `RpgDamageFns`/equivalent typed factory-result contract;
+- introduce an exact typed Codex callback-to-type-id policy;
+- replace post-construction reflective mutation with direct one-time composition;
+- remove the two unsafe production casts, `Object.entries()` loop, and `args[1]` mutation.
+
+### Exclusions
+
+Do not:
+
+- change which callbacks receive a Codex multiplier or change any mapped type id;
+- add Codex scaling to boss, elites, projectiles, shards, ALIVEN, Life, Verdure, Nadir, Binary Ring,
+  Horizon, or any other currently excluded family;
+- change damage formulas, DEF/pierce/shield rules, minimum damage, hit/death behavior, DPS
+  attribution, enemy barks, rewards, statuses, targeting, readiness, wave completion, or procs;
+- modify `RpgTargetingCtx`, `RpgPlayerAttackCtx`, `RpgWeaponCtx`, `OrbitProjectileCtx`, their
+  factories, or renderer context wiring;
+- consolidate damage APIs, callback signatures, supplemental wrappers, or crafted post-hit hooks;
+- move simulation authority or introduce a registry, dispatcher, generic manager, service locator,
+  visitor, ECS, or event bus;
+- introduce `any`, unsafe production casts, reflection, dynamic key discovery/lookup, proxying,
+  variadic forwarding, or per-hit arrays/objects/closures;
+- make unrelated UI, save, settings, audio, asset, platform, native-wrapper, lifecycle, collection,
+  reset-profile, Verdure-resize, or overlay changes;
+- bump `SAVE_VERSION` or plan/begin Phase Seven.
+
+### Implementation Sequence
+
+1. Read all repository instructions, maps, status/TODO/routing/conventions/dependency/architecture/
+   decision/file-index documentation and this entire phase.
+2. Confirm Phases One through Five are closed; branch, Build, HEAD, upstream divergence, working
+   tree, and commits since this planning commit.
+3. Run baseline typecheck, full tests, lint, web build, and desktop build.
+4. Re-inventory every `createDamageFns()` return key and current Codex map; record exact current
+   participating and excluded sets and mappings.
+5. Add characterization tests first for the existing policy and behavior. Run them against the
+   current reflective implementation and record the green baseline.
+6. Add the typed factory-result contract and exact policy classification. Typecheck before changing
+   runtime composition.
+7. Replace the reflection/casts/mutation with explicit direct wrappers for participating callbacks
+   and direct passthrough properties for exclusions.
+8. Run the focused policy suite plus Horizon, encounter-collection, Lens T2/T3, weapon-chain, Life,
+   crafted post-hit, and target-collection coverage.
+9. Inspect source and compiled output sufficiently to confirm there is no production key iteration,
+   unsafe cast, rest-argument forwarding, or new per-hit allocation at this boundary.
+10. Increment `BUILD_NUMBER` exactly once, update narrowly relevant docs and this work log, run all
+    validation, review the complete diff for scope and behavioral drift, commit, push, and stop.
+
+### Characterization-Test Matrix
+
+| Boundary | Required cases | Preserved result |
+|---|---|---|
+| Exact policy | All 37 participating keys and exact type ids | No missing, renamed, or remapped callback |
+| Exhaustive classification | 37 participating plus 17 excluded equals all 54 factory keys | Every factory callback is intentionally classified once |
+| Ordinary main body | Laser or equivalent with multiplier 1 and >1 | Raw damage is scaled before DEF; return/HP/DPS agree |
+| Shielded signature | Sapphire shield and body paths, including bypass flag | Fourth argument and shield semantics are unchanged |
+| Polyomino/procedural/fish | One representative from each signature/family boundary | Correct mapped type id and existing side effects |
+| Live lookup | Change getter result between two calls on the same returned function | Second hit uses the new multiplier; no factory-time cache |
+| Optional getter | Omit `getCodexDamageMultiplier` | Existing multiplier-1 behavior |
+| Hit hook | Positive, absorbed, and shield-blocked representative hits | Existing `onEnemyHit` entity/damage/blocked values and order |
+| Explicit exclusions | Representative projectile, shard, elite, special, ALIVEN, and Horizon callbacks | Getter is not consulted and raw damage is unchanged |
+| Existing focused behavior | Horizon, Lens T2/T3, weapon chain, Life, crafted post-hit, target collection | No weakened or removed integration coverage |
+
+The exhaustive policy test may use `Object.keys()` in test code. Production must use direct policy
+properties and explicit return members only. Do not add brittle source-text snapshots.
+
+### Acceptance Criteria
+
+Phase Six is complete only when:
+
+- the exact 37/17 policy is explicit, typed, and tested against all 54 current factory callbacks;
+- callback-to-type-id mappings are unchanged;
+- `createDamageFns()` contains no `Object.entries()` callback loop, dynamic function lookup,
+  post-construction function mutation, `unknown[]` forwarding cast, or `Record<string, unknown>`
+  cast;
+- participating callbacks perform a live multiplier lookup and excluded callbacks do not;
+- no per-hit rest array, object, closure, mapped view, reflection, or new allocation is introduced;
+- all callback signatures, damage rules, side effects, and renderer call sites remain unchanged;
+- attack/weapon/targeting/orbit context interfaces and wiring remain unchanged;
+- no `any`, unsafe production cast, weakened lint rule, or weakened test is introduced;
+- `BUILD_NUMBER` is incremented once (target 336 if still on 335) and `SAVE_VERSION` is unchanged;
+- focused and complete validation passes, or every nonzero result is reported accurately;
+- implementation/docs are committed and pushed with clean synchronized `main`;
+- no Phase Seven is planned or begun.
+
+### Validation Commands
+
+Run and report exact exit codes:
+
+```bash
+npm run typecheck
+npm test
+npm run lint
+npm run build
+npm run build:desktop
+git diff --check
+```
+
+Focused validation must include the new Codex damage-policy suite plus:
+
+- `horizon-pentagon-damage.test.ts`;
+- `rpg-encounter-collections.test.ts`;
+- `lens-tier2-effects.test.ts` and `lens-tier3-effects.test.ts`;
+- `rpg-weapon-chain.test.ts`;
+- `life-zone.test.ts`;
+- current crafted post-hit and target-collection tests.
+
+Practical browser smoke should cover startup, RPG entry, ordinary combat, a shielded enemy if
+available, Equation-to-RPG re-entry, low graphics, and console errors. Run the hidden Electron
+startup smoke after the desktop build. Do not claim locked-zone, elite, procedural, ALIVEN, Life,
+Horizon, or boss coverage that is unavailable from the practical fixture.
+
+### Risks and Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| A callback silently leaves or enters Codex scaling | Exact participating/excluded partition tested against all factory keys |
+| A type id is mistyped during explicit composition | Export one typed policy and use direct named properties in wrappers/tests |
+| A generic wrapper changes a callback signature or allocates rest arrays | Use explicit callback properties and scalar scaling helper only |
+| Multiplier is cached too early | Characterize two calls with a changing getter result |
+| Wrapper changes hook/DPS order or shield rules | Test return, HP, DPS, and hit-hook observations on representative signatures |
+| Suspicious exclusions are “fixed” | Test exclusions as preserved behavior; require separate gameplay evidence to change them |
+| Scope expands into context consolidation | Forbid context/interface/renderer wiring changes in acceptance and diff review |
+| Auto-sync or user edits overlap implementation | Recheck HEAD/status at edit and commit boundaries; preserve unrelated changes |
+
+### Model-Neutral Codex/Claude Instructions
+
+These instructions apply equally to any repository-capable implementation agent.
+
+#### Before editing
+
+- Read `AGENTS.md`, `agents.md`, `CLAUDE.md`, every required repository workflow document, the
+  relevant damage/targeting/attack file-index entries, and this complete phase.
+- Confirm Phases One through Five are closed and do not modify their completed ownership,
+  lifecycle, reset-profile, readiness, Verdure, or overlay work.
+- Treat current source as authoritative; recalculate factory/policy counts after intervening commits.
+- Preserve unrelated changes and auto-sync commits; never reset or force-checkout them.
+- Record baseline branch, build, HEAD, upstream divergence, working tree, and validation results.
+
+#### During implementation
+
+- Add and run existing-behavior characterization tests before production edits.
+- Preserve the exact current policy, type ids, function signatures, and hit-time lookup semantics.
+- Keep policy/runtime ownership in `rpg-damage.ts`; use explicit direct properties in production.
+- Do not change renderer contexts, damage APIs, targeting, readiness, weapons, or gameplay rules.
+- Do not add `any`, unsafe casts, production reflection/key iteration, variadic forwarding, or
+  per-hit allocations.
+- Run focused tests after the typed contract and again after explicit runtime composition.
+
+#### Before delivery
+
+- Increment the authoritative build once for implementation and do not change `SAVE_VERSION`.
+- Update only documentation whose responsibility/status changed and update this phase work log.
+- Run every listed validation and report exact exits, counts, warnings, environment limits, and
+  unavailable smoke coverage.
+- Inspect source and compiled output for reflective dispatch or hot-path allocation regressions.
+- Review the full diff for policy membership, type-id, damage-rule, and scope drift.
+- Commit and push, confirm local `main` equals `origin/main` and the tree is clean, then stop.
+
+### Planning-Run Validation
+
+| Command / check | Result | Classification |
+|---|---:|---|
+| Branch/upstream before planning | `main`, ahead 0, behind 0, clean | Passed |
+| Planning HEAD / build | `9216f68`; Build 335 | Passed |
+| `npm run typecheck` | Exit 0 | Passed |
+| `npm run lint` | Exit 0 | Passed |
+| `npm test` | Exit 0; 74 files, 1493 tests | Passed; existing Boss MIDI invalid-URL stderr remained |
+| `npm run build` | Exit 0; 442 modules | Passed with existing chunk-size warning |
+| `npm run build:desktop` | Exit 0; 442 modules | Passed with existing chunk-size warning |
+
+No source, test, build-number, save-version, or implementation change was made during Phase Six
+planning.
+
+### Exact Implementation Prompt
+
+> Work on Phase Six, “Typed Codex Damage Modifier Policy,” in `RefactorPlan.md`. Follow all
+> repository and phase instructions, add characterization tests before production changes, preserve
+> the exact current 37-participating/17-excluded Codex damage policy and all damage behavior, update
+> the plan throughout, validate fully, commit and push, and stop after Phase Six.
