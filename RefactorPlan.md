@@ -3896,3 +3896,62 @@ Phase 11 bounded.
 - Commit hash and push result: recorded after commit below.
 
 ---
+
+## Phase 12: `ReadonlyArray<BuffableEnemy>` cast cluster
+
+### Motivation
+
+Phase 11 widened `BuffableEnemy` (`src/render/rpg/rpg-elite-buff.ts`) with optional
+`shieldHp?: number` / `maxShieldHp?: number` fields and explicitly deferred a larger cluster: 75
+`ctx.<array> as ReadonlyArray<BuffableEnemy>` casts across `rpg-enemy-spawn.ts` (39 sites) and
+`rpg-wave-dead-enemies-special.ts` (36 sites), one per concrete enemy array collected into
+`_getNonEliteArrays`. Re-audited now that the interface is wider: a scratch test removing every
+` as ReadonlyArray<BuffableEnemy>` occurrence from both files and running `tsc --noEmit -p .`
+produced **zero errors**. Every concrete enemy array type (`LaserEnemy[]`, `SapphireEnemy[]`,
+`EmeraldEnemy[]`, ... 39 types total) is already structurally assignable to
+`ReadonlyArray<BuffableEnemy>` — each concrete type carries `x`, `y`, `hp`, `maxHp`, `atk`, `def`,
+and shield-bearing types (`SapphireEnemy`, `AmethystEnemy`, `QuartzFishEnemy`, etc.) carry
+`shieldHp`/`maxShieldHp: number`, which now satisfy the widened optional fields directly.
+`T[]` → `ReadonlyArray<Base>` is a covariant, safe supertype conversion in TypeScript when `T` is
+assignable to `Base`, so no cast was ever structurally required once `BuffableEnemy` included the
+shield fields — the casts are pure leftover noise from before Phase 11.
+
+### Scope
+
+- `src/render/rpg/rpg-enemy-spawn.ts` — remove all 39 ` as ReadonlyArray<BuffableEnemy>` occurrences
+  in `_getNonEliteArrays`.
+- `src/render/rpg/rpg-wave-dead-enemies-special.ts` — remove all 36 ` as ReadonlyArray<BuffableEnemy>`
+  occurrences in the equivalent array-collection function.
+- No other files change. `BuffableEnemy` itself is untouched (already correct after Phase 11).
+- Pure type-level edit: casts are erased at compile time and carry no runtime representation, so the
+  emitted JavaScript is byte-identical before and after. This bounds risk to "does it still
+  typecheck," which has already been confirmed.
+
+### Behavioral contract
+
+- Zero runtime behavior change — verified by the fact that `as ReadonlyArray<T>` compiles to nothing;
+  removing it cannot alter emitted JS control flow, values, or object identity.
+- `_getNonEliteArrays` / equivalent in `rpg-wave-dead-enemies-special.ts` must return the exact same
+  array-of-arrays, in the exact same order, as before.
+
+### Test plan
+
+Because this is a pure type-annotation removal with no emitted-code difference, the strongest
+characterization check is a compiled-output diff rather than new unit tests:
+
+1. Baseline: capture `tsc --noEmit -p .` (clean), `npm run lint` (clean), and full `npm test` (80
+   files / 1531 tests, all passing) before touching source — recorded above.
+2. Apply the cast removals.
+3. Re-run `tsc --noEmit -p .`, `npm run lint`, and the full test suite — must match baseline exactly
+   (same file/test counts, all green). No new test files are added: the existing suite already
+   exercises `_getNonEliteArrays`/`recalcAllNonEliteBuffs` and the dead-enemy sweep indirectly through
+   enemy-spawn and elite-buff tests, and the change carries no new runtime path for tests to target.
+
+### Explicit exclusions
+
+- `BuffableEnemy` interface itself — not touched, already correct.
+- Any array field not part of `_getNonEliteArrays` (e.g. `eliteEnemies`, `alivenGroups`,
+  `lifeColonies`) — out of scope, different shape/purpose.
+- No new casts, reflection, or roster patterns surfaced during this audit.
+
+---
