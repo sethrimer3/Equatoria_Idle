@@ -8,12 +8,13 @@
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 import type { ComboResult } from '../../sim/rpg/enemy-status-combos';
 import { recordComboEvent } from '../../dev/rpg-combat-event-log';
+import { AOE_ELITE_FAMILY_KEY, AOE_FAMILY_ROSTER } from './rpg-encounter-collections';
 
 type MinEnemy = { x: number; y: number; hp: number; maxHp: number };
 
 /**
- * Iterate main enemy arrays from ctx and deal combo AoE damage to those
- * within radius of (cx, cy), skipping the primary enemy (already hit).
+ * Iterate the canonical AoE family roster from ctx and deal combo AoE damage
+ * to those within radius of (cx, cy), skipping the primary enemy (already hit).
  * Returns total damage actually dealt across all hit enemies.
  */
 function _applyAoeDmg(
@@ -25,38 +26,23 @@ function _applyAoeDmg(
   const rSq = radius * radius;
   let totalDealt = 0;
 
-  const arrays: MinEnemy[][] = [
-    ctx.enemies as unknown as MinEnemy[],
-    ctx.sapphireEnemies as unknown as MinEnemy[],
-    ctx.emeraldEnemies as unknown as MinEnemy[],
-    ctx.amberEnemies as unknown as MinEnemy[],
-    ctx.voidEnemies as unknown as MinEnemy[],
-    ctx.quartzEnemies as unknown as MinEnemy[],
-    ctx.rubyEnemies as unknown as MinEnemy[],
-    ctx.sunstoneEnemies as unknown as MinEnemy[],
-    ctx.citrineEnemies as unknown as MinEnemy[],
-    ctx.ioliteEnemies as unknown as MinEnemy[],
-    ctx.amethystEnemies as unknown as MinEnemy[],
-    ctx.diamondEnemies as unknown as MinEnemy[],
-    ctx.nullstoneEnemies as unknown as MinEnemy[],
-    ctx.fracterylEnemies as unknown as MinEnemy[],
-    ctx.eigensteinEnemies as unknown as MinEnemy[],
-    ctx.eliteEnemies as unknown as MinEnemy[],
-  ];
-
-  for (const arr of arrays) {
-    for (const e of arr) {
-      if ((e as object) === skipEnemy || e.hp <= 0) continue;
-      const dx = e.x - cx, dy = e.y - cy;
-      if (dx * dx + dy * dy <= rSq) {
-        const before = e.hp;
-        e.hp = Math.max(0, e.hp - dmg);
-        const dealt = before - e.hp;
-        totalDealt += dealt;
-        ctx.spawnHitVisualsAt(e.x, e.y, e.maxHp, dealt, color);
-      }
+  const hit = (e: { x: number; y: number; hp: number; maxHp: number }): void => {
+    if ((e as object) === skipEnemy || e.hp <= 0) return;
+    const dx = e.x - cx, dy = e.y - cy;
+    if (dx * dx + dy * dy <= rSq) {
+      const before = e.hp;
+      e.hp = Math.max(0, e.hp - dmg);
+      const dealt = before - e.hp;
+      totalDealt += dealt;
+      ctx.spawnHitVisualsAt(e.x, e.y, e.maxHp, dealt, color);
     }
+  };
+
+  for (const { key } of AOE_FAMILY_ROSTER) {
+    for (const e of ctx[key]) hit(e);
   }
+  for (const e of ctx[AOE_ELITE_FAMILY_KEY]) hit(e);
+
   return totalDealt;
 }
 

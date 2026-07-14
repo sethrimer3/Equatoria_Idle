@@ -419,3 +419,42 @@ export function clearForDeathRestart(
     profile === 'boss' ? BOSS_DEATH_RESTART_CLEAR_KEYS : NORMAL_DEATH_RESTART_CLEAR_KEYS,
   );
 }
+
+/**
+ * Canonical AoE enemy-family roster (Phase Seven). Single source of family
+ * membership, order, and type-id assignment for the three previously
+ * independent AoE rosters in rpg-combo-apply.ts and rpg-player-attack-aoe.ts.
+ * `eliteEnemies` is intentionally excluded: its type id is computed
+ * per-entity from `tier` at each consumer, not a static string.
+ */
+export const AOE_FAMILY_ROSTER = [
+  { key: 'enemies', typeId: 'other' },
+  { key: 'sapphireEnemies', typeId: 'sapphire' },
+  { key: 'emeraldEnemies', typeId: 'emerald' },
+  { key: 'amberEnemies', typeId: 'other' },
+  { key: 'voidEnemies', typeId: 'other' },
+  { key: 'quartzEnemies', typeId: 'other' },
+  { key: 'rubyEnemies', typeId: 'ruby' },
+  { key: 'sunstoneEnemies', typeId: 'other' },
+  { key: 'citrineEnemies', typeId: 'other' },
+  { key: 'ioliteEnemies', typeId: 'other' },
+  { key: 'amethystEnemies', typeId: 'other' },
+  { key: 'diamondEnemies', typeId: 'other' },
+  { key: 'nullstoneEnemies', typeId: 'nullstone' },
+  { key: 'fracterylEnemies', typeId: 'fracteryl' },
+  { key: 'eigensteinEnemies', typeId: 'eigenstein' },
+] as const satisfies readonly { key: keyof RpgEncounterCollections; typeId: string }[];
+
+export type AoeFamilyRosterEntry = typeof AOE_FAMILY_ROSTER[number];
+export type AoeFamilyKey = AoeFamilyRosterEntry['key'];
+
+/** Elite enemies participate in all three AoE rosters but keep a dynamic, per-entity type id. */
+export const AOE_ELITE_FAMILY_KEY = 'eliteEnemies' as const satisfies keyof RpgEncounterCollections;
+
+/** Minimal structural shape every AoE-roster family member satisfies. */
+export interface AoeDamageableEntity {
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+}

@@ -23,6 +23,7 @@ import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import { evaluateStatusCombosOnStatusApplied } from '../../sim/rpg/enemy-status-combos';
 import { applyComboResults } from './rpg-combo-apply';
 import type { CombinedEquipmentModifiers } from '../../data/rpg/equipment-modifiers';
+import { AOE_FAMILY_ROSTER } from './rpg-encounter-collections';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
@@ -262,34 +263,28 @@ export function performAoeAttack(
   // Lens status post-hit: apply Tier 1 statuses to all in-range enemies,
   // respecting affinities, immunities, and boss/elite overrides.
   if (equipment?.lens && weaponId) {
-    type AoeEntry = { enemy: { hp: number; x: number; y: number }; enemyTypeId: string };
-    const aoeTargets: AoeEntry[] = [
-      ...enemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...sapphireEnemies.map(e => ({ enemy: e, enemyTypeId: 'sapphire' })),
-      ...emeraldEnemies.map(e => ({ enemy: e, enemyTypeId: 'emerald' })),
-      ...amberEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...voidEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...quartzEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...rubyEnemies.map(e => ({ enemy: e, enemyTypeId: 'ruby' })),
-      ...sunstoneEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...citrineEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...ioliteEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...amethystEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...diamondEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
-      ...nullstoneEnemies.map(e => ({ enemy: e, enemyTypeId: 'nullstone' })),
-      ...fracterylEnemies.map(e => ({ enemy: e, enemyTypeId: 'fracteryl' })),
-      ...eigensteinEnemies.map(e => ({ enemy: e, enemyTypeId: 'eigenstein' })),
-      ...eliteEnemies.map(e => ({ enemy: e, enemyTypeId: `elite_${(e as { tier: string }).tier}` })),
-    ];
     const emberDurationMult = getEmberDurationMult(ctx.rpgSimState);
     const emberPotencyMult = getEmberPotencyMult(ctx.rpgSimState);
     const emberOverloadChancePct = getEmberOverloadChancePct(ctx.rpgSimState);
-    for (const { enemy: e, enemyTypeId } of aoeTargets) {
+    for (const { key, typeId } of AOE_FAMILY_ROSTER) {
+      for (const e of ctx[key]) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        if (dx * dx + dy * dy <= aoeSq) {
+          applyTier1LensStatusesToEnemy({
+            enemy: e, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId: typeId,
+            statusPowerPct: equipment.statusChancePct,
+            emberDurationMult, emberPotencyMult, emberOverloadChancePct,
+          });
+        }
+      }
+    }
+    for (const e of eliteEnemies) {
       if (e.hp <= 0) continue;
       const dx = e.x - mote.x, dy = e.y - mote.y;
       if (dx * dx + dy * dy <= aoeSq) {
         applyTier1LensStatusesToEnemy({
-          enemy: e, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
+          enemy: e, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId: `elite_${e.tier}`,
           statusPowerPct: equipment.statusChancePct,
           emberDurationMult, emberPotencyMult, emberOverloadChancePct,
         });
@@ -318,27 +313,9 @@ export function performAoeAttack(
   // AoE status combo evaluation: check each in-range enemy for combo conditions.
   if (equipment?.lens && weaponId) {
     const nowMs = performance.now();
-    type MinE = { x: number; y: number; hp: number };
-    // Map each array to its type ID for correct affinity/scaling.
-    const comboArrays: { arr: MinE[]; typeId: string }[] = [
-      { arr: enemies as unknown as MinE[], typeId: 'other' },
-      { arr: sapphireEnemies as unknown as MinE[], typeId: 'sapphire' },
-      { arr: emeraldEnemies as unknown as MinE[], typeId: 'emerald' },
-      { arr: amberEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: voidEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: quartzEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: rubyEnemies as unknown as MinE[], typeId: 'ruby' },
-      { arr: sunstoneEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: citrineEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: ioliteEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: amethystEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: diamondEnemies as unknown as MinE[], typeId: 'other' },
-      { arr: nullstoneEnemies as unknown as MinE[], typeId: 'nullstone' },
-      { arr: fracterylEnemies as unknown as MinE[], typeId: 'fracteryl' },
-      { arr: eigensteinEnemies as unknown as MinE[], typeId: 'eigenstein' },
-    ];
-    for (const { arr, typeId } of comboArrays) {
-      for (const e of arr) {
+    // Map each roster family to its type ID for correct affinity/scaling.
+    for (const { key, typeId } of AOE_FAMILY_ROSTER) {
+      for (const e of ctx[key]) {
         if (e.hp <= 0) continue;
         const dx = e.x - mote.x, dy = e.y - mote.y;
         if (dx * dx + dy * dy <= aoeSq) {
