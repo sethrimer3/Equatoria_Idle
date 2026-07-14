@@ -3954,4 +3954,34 @@ characterization check is a compiled-output diff rather than new unit tests:
   `lifeColonies`) — out of scope, different shape/purpose.
 - No new casts, reflection, or roster patterns surfaced during this audit.
 
+### Change made in this session
+
+- `src/render/rpg/rpg-enemy-spawn.ts` — removed all 39 ` as ReadonlyArray<BuffableEnemy>` casts in
+  `_getNonEliteArrays`.
+- `src/render/rpg/rpg-wave-dead-enemies-special.ts` — removed all 36 ` as ReadonlyArray<BuffableEnemy>`
+  casts in the equivalent function.
+- `src/buildInfo.ts` — `BUILD_NUMBER` 341 → 342.
+- No test files added: pure type-annotation removal, zero emitted-JS difference, existing suite
+  covers the runtime path unchanged.
+
+### Validation Results
+
+| Command | Exit | Result |
+|---|---:|---|
+| `npm run typecheck` | 0 | Passed (baseline and post-change identical) |
+| `npm run lint` | 0 | Passed (baseline and post-change identical) |
+| `npm test` | 0 | Passed — 80 files, 1531 tests (baseline and post-change identical) |
+
+### Recommended next action
+
+None specific to this phase. No further `as unknown as` casts, reflection, or parallel-roster
+patterns were surfaced in this audit — the series' target patterns appear largely exhausted in
+`src/render/rpg/`. A future session should re-audit other subsystems (e.g. `src/sim/`) if continuing
+this series.
+
+### Build, branch, commit, and push status
+
+- Branch: `main`. Build: `342`. `SAVE_VERSION`: unchanged.
+- Commit hash and push result: recorded after commit below.
+
 ---
