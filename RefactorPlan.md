@@ -4,7 +4,7 @@
 **Baseline branch:** `main`  
 **Current planning build:** `334`
 **Current planning baseline:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
-**Status:** Phases One through Four complete; Phase Five planned (planning only)
+**Status:** Phases One through Six complete (Build 336); Phase Seven planned (planning only)
 **Compatible agents:** Codex, Claude, or another repository-capable coding agent
 
 ---
@@ -2458,3 +2458,344 @@ locked-scene, elite, ALIVEN, Life, Horizon, or boss coverage beyond the automate
 No renderer context, targeting, weapon, orbit, readiness, lifecycle, collection-ownership,
 reset-profile, crafted post-hit hook, or save-data file was changed. No Phase Seven work was planned
 or begun.
+
+---
+
+## Phase Seven — Canonical AoE Enemy-Family Roster
+
+**Planning baseline date:** 2026-07-13
+**Baseline branch:** `main`
+**Baseline build:** `336`
+**Baseline commit:** `6dce8a9d`
+**Baseline working tree:** Clean; `main` matched `origin/main`
+**Status:** Planned only. Do not begin implementation from this document.
+
+### Decision
+
+A further narrowly scoped, behavior-preserving phase is justified.
+
+Phase Seven should replace three independently maintained "enemy family → type id" rosters used by
+AoE combat with one canonical, compiler-checked roster derived from `RpgEncounterCollections`, and
+remove the one per-hit object-allocating construction among them. It does not touch single-target
+damage, the Phase Five readiness policy, the Phase Six Codex policy, or any context interface.
+
+This phase is distinct from the completed work:
+
+- Phase One centralized trace-overlay frame scheduling.
+- Phase Two established owned application-runtime lifecycle.
+- Phase Three introduced the canonical `RpgEncounterCollections` owner and reset profiles.
+- Phase Four introduced typed Verdure-resize and overlay-fade body profiles.
+- Phase Five derived attack contexts from canonical collections and extracted the readiness policy.
+- Phase Six replaced the reflective Codex damage-multiplier wrapper with a typed policy record.
+- Phase Seven is limited to the three duplicated 15/16-family AoE rosters described below. It does
+  not create a general per-family registry, event bus, or visitor abstraction, and it does not touch
+  the 17 excluded-from-Codex callbacks, the readiness policy, or single-target attack paths.
+
+### Current-Code Evidence
+
+#### Three independently authored 15/16-family rosters
+
+1. `src/render/rpg/rpg-combo-apply.ts::_applyAoeDmg()` (roughly lines 28–45) builds a 16-entry
+   `MinEnemy[][]` literal on every combo-AoE hit. Each canonical `RpgEncounterCollections` array is
+   cast `as unknown as MinEnemy[]` into the literal. The 16 families are: `enemies`,
+   `sapphireEnemies`, `emeraldEnemies`, `amberEnemies`, `voidEnemies`, `quartzEnemies`,
+   `rubyEnemies`, `sunstoneEnemies`, `citrineEnemies`, `ioliteEnemies`, `amethystEnemies`,
+   `diamondEnemies`, `nullstoneEnemies`, `fracterylEnemies`, `eigensteinEnemies`, `eliteEnemies`.
+
+2. `src/render/rpg/rpg-player-attack-aoe.ts` (roughly lines 265–283) builds a 15-family
+   `AoeEntry[]` array on every AoE weapon hit using `.map()` on each family array, allocating one new
+   `{ enemy, enemyTypeId }` object per live entity in every family, every hit. Its families are the
+   same 14 gem/main-body families plus `eliteEnemies`, each paired with a type id string (`'other'`
+   for undifferentiated families; `'sapphire'`, `'emerald'`, `'ruby'`, `'nullstone'`, `'fracteryl'`,
+   `'eigenstein'`, or `` `elite_${tier}` `` for affinity-relevant families).
+
+3. The same file's `comboArrays` construction (roughly lines 320–338) builds a near-identical
+   15-entry `{ arr, typeId }[]` literal on every AoE status-combo evaluation, again casting each
+   canonical array `as unknown as MinE[]`, with the same type-id assignments as construction #2 minus
+   `eliteEnemies` (handled separately immediately afterward, roughly lines 353–360).
+
+Current source is authoritative. The implementing agent must re-inventory the exact families, order,
+and type-id assignments in all three call sites before writing characterization tests, and record
+any drift from this count.
+
+#### Consequences of the duplication
+
+- The three rosters must be kept manually synchronized. A newly added gem/main-body enemy family can
+  compile while silently missing from one, two, or all three AoE rosters, producing enemies that take
+  direct-hit and single-target damage but are invisible to AoE splash, AoE status combos, or AoE lens
+  statuses.
+- Construction #2 (`aoeTargets`) is a genuine per-hit allocation: one new object per live entity per
+  family, every AoE weapon hit, not just one array-of-arrays literal like #1 and #3.
+- Every `as unknown as MinEnemy[]` / `as unknown as MinE[]` cast bypasses the compiler at the point
+  where family membership is authored, matching the class of defect Phase Six already removed from
+  `createDamageFns()`.
+- No existing test asserts exact family membership, order, or type-id assignment for any of the three
+  rosters. `eliteEnemies`'s dynamic `` `elite_${tier}` `` type id and the `isInvuln` filter applied to
+  it only in the `comboArrays` consumer are current behavior that must be preserved exactly.
+
+#### Existing canonical seam
+
+`src/render/rpg/rpg-encounter-collections.ts::RpgEncounterCollections` and its Phase Four/Five typed
+key-tuple pattern (`RPG_VERDURE_RESIZE_BODY_KEYS`, `RPG_OVERLAY_FADE_BODY_KEYS`,
+`RPG_ATTACK_READINESS_...` keys) already establish the precedent for a compiler-checked static key
+tuple paired with canonical collections. Phase Seven should follow that exact precedent rather than
+introducing a new pattern.
+
+### Objective and Behavioral Contract
+
+Add one canonical, compiler-checked AoE family roster — a static tuple of
+`{ key: keyof RpgEncounterCollections; typeId: string }` entries (or the minimal equivalent that
+satisfies existing consumers) — and derive all three current call sites from it, preserving:
+
+- exact current family membership, order, and type-id assignment in each of the three consumers;
+- `eliteEnemies`'s per-entity `` `elite_${tier}` `` type id in the consumer(s) that currently compute
+  it dynamically, rather than flattening it into the static roster;
+- the `isInvuln` filter currently applied only where it is currently applied;
+- construction #2's current allocation of one `{ enemy, enemyTypeId }` per live entity if removing
+  that allocation is not achievable without changing consumer behavior — the required deliverable is
+  a single canonical membership source, not a guaranteed zero-allocation AoE path; removing the
+  per-hit object allocation is a required stretch goal only if it can be done as a direct, low-risk
+  rewrite of the existing loop shape (e.g. iterating `{ key, typeId }` roster entries directly instead
+  of pre-flattening into `aoeTargets`), not by introducing a generic iterator/callback abstraction.
+
+### Scope Boundaries
+
+#### Required
+
+1. Add one canonical static AoE family roster (module-level, Node-safe, compiler-checked against
+   `RpgEncounterCollections`) covering the union of families used by the three current call sites.
+2. Add characterization tests for all three current rosters (exact membership, order, and type-id
+   assignment) before any production change.
+3. Migrate `_applyAoeDmg()` in `rpg-combo-apply.ts` to iterate the canonical roster instead of its
+   local 16-entry literal, preserving the existing `skipEnemy` and `hp <= 0` filters and hit-visual
+   callback.
+4. Migrate the `aoeTargets` construction in `rpg-player-attack-aoe.ts` to iterate the canonical
+   roster, preserving the exact current type-id assignment including `eliteEnemies`'s dynamic tier id.
+5. Migrate the `comboArrays` construction in the same file to iterate the canonical roster (minus
+   `eliteEnemies`, which keeps its existing separate, `isInvuln`-filtered loop) unless a reproduced
+   behavioral requirement says otherwise.
+6. Remove the `as unknown as MinEnemy[]` / `as unknown as MinE[]` casts at all three sites in favor of
+   a typed accessor derived from the canonical roster and `RpgEncounterCollections`.
+7. Update the build number and only the documentation whose responsibilities actually change.
+
+#### Optional only when proven low-risk and mechanical
+
+- Removing construction #2's per-entity object allocation by iterating roster entries directly in the
+  existing per-hit loop, if this requires no new abstraction beyond the static roster itself.
+- A small shared Node-safe helper (e.g. `forEachAoeFamily(collections, cx, cy, radius, fn)`) only if
+  it stays a plain loop with no captured per-hit closures beyond what already exists at each call site,
+  and only if it does not merge the three consumers' genuinely different per-entity behavior (damage
+  application vs. lens-status application vs. combo evaluation).
+
+#### Deferred
+
+- Unifying single-target damage, targeting, or the Phase Five readiness/Phase Six Codex policies with
+  this roster.
+- Any family addition, removal, or type-id change without a reproduced defect and documented intended
+  behavior.
+- `horizonPentagonGroups`, `lifeColonies`, and `alivenGroups` AoE handling in
+  `rpg-player-attack-aoe.ts` (roughly lines 205–250), which use bespoke per-family logic already
+  distinct from the three rosters and are out of scope.
+- Renderer decomposition, ECS conversion, a generic entity registry, event bus, or visitor framework.
+- Combat balance, damage formulas, status-combo rules, lens/weave logic, or draw/targeting order.
+
+### Required Characterization Tests
+
+Add tests before production changes.
+
+#### Roster membership
+
+- Assert the canonical roster's key set matches the union of all three current call sites' families.
+- Assert `_applyAoeDmg()`'s current 16-family membership and order.
+- Assert `aoeTargets`'s current 15-family membership, order, and exact type-id string per family
+  (`'other'`, `'sapphire'`, `'emerald'`, `'ruby'`, `'nullstone'`, `'fracteryl'`, `'eigenstein'`, and
+  `eliteEnemies`'s dynamic `` `elite_${tier}` `` rule).
+- Assert `comboArrays`'s current 15-family membership, order, and type-id assignment, and that
+  `eliteEnemies` is handled by its existing separate loop with the existing `isInvuln` filter.
+- Assert every roster key exists in the canonical `RPG_ENCOUNTER_COLLECTION_KEYS` tuple from Phase
+  Three.
+
+#### Behavior preservation
+
+- Seed representative enemies across ordinary, gem, elite, polyomino-eligible, and boss-adjacent
+  families and verify `_applyAoeDmg()` still damages only in-range, non-skipped, living enemies and
+  calls the hit-visual callback with the same arguments as before migration.
+- Verify AoE lens-status application still receives the same `enemyTypeId` per family, including the
+  dynamic elite tier id, after migrating `aoeTargets`.
+- Verify AoE status-combo evaluation still receives the same `enemyTypeId` per family after migrating
+  `comboArrays`, and that `eliteEnemies` combo evaluation still applies its existing `isInvuln` filter.
+- If the per-entity allocation in `aoeTargets` is removed as the optional stretch goal, verify
+  identical enemy selection and identical `enemyTypeId` values via a direct before/after comparison
+  test, not by inspection alone.
+
+#### Existing coverage
+
+Do not weaken existing coverage. Run combo, AoE weapon, lens tier 1/2/3, elite, and encounter-
+collection tests that exist at implementation time, plus the Phase Five/Six test suites.
+
+### Implementation Sequence
+
+1. Read `AGENTS.md`/`agents.md`, `CLAUDE.md`, current repository maps/status/TODO,
+   `ARCHITECTURE.md`/`DECISIONS.md`, and this entire plan.
+2. Confirm branch, build, working tree, upstream divergence, and commits after `6dce8a9d`.
+3. Treat current source as authoritative; re-inventory the exact family/order/type-id counts in all
+   three call sites before writing tests.
+4. Run baseline `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`, and
+   `npm run build:desktop`.
+5. Add the roster-membership and behavior-preservation characterization tests against the current
+   (pre-migration) implementation; confirm they pass against current source.
+6. Add the canonical static AoE family roster to `rpg-encounter-collections.ts` or a sibling
+   Node-safe module, compiler-checked against `RpgEncounterCollections`.
+7. Migrate `_applyAoeDmg()`; run focused combo/AoE tests.
+8. Migrate `aoeTargets`; run focused AoE/lens tests.
+9. Migrate `comboArrays`; run focused AoE/combo tests.
+10. Attempt the optional per-entity-allocation removal only if steps 7–9 leave clear, low-risk room
+    for it; otherwise leave `aoeTargets`'s current allocation shape in place and record that decision.
+11. Confirm no remaining `as unknown as MinEnemy[]` / `as unknown as MinE[]` cast at any of the three
+    original sites.
+12. Run complete validation and available browser/Electron smoke checks.
+13. Update the build number and only narrowly relevant documentation.
+14. Review the full diff for membership, ordering, type-id, and allocation-shape drift, and for
+    unrelated changes.
+15. Record exact commands, exit codes, limitations, commit hash, push result, and final working-tree
+    status in this document.
+16. Commit and push as one coherent phase, then stop.
+
+### Acceptance Criteria
+
+Phase Seven is complete only when:
+
+- one canonical, compiler-checked AoE family roster exists and is the single source of family
+  membership, order, and type-id assignment for all three current call sites;
+- `_applyAoeDmg()`, `aoeTargets`, and `comboArrays` all derive from that roster instead of independent
+  literals;
+- no `as unknown as MinEnemy[]` / `as unknown as MinE[]` cast remains at any of the three original
+  sites;
+- `eliteEnemies`'s dynamic tier type id and its `isInvuln`-filtered separate combo loop are preserved
+  exactly;
+- no family is added, removed, or reassigned a different type id without a reproduced regression and
+  documented intended behavior;
+- no combat, damage, targeting, draw-order, lens/weave, or status-combo behavior changes;
+- the optional per-entity-allocation removal is either completed with a direct before/after test or
+  explicitly deferred with a recorded reason — not silently attempted and left inconsistent;
+- build number and only narrowly relevant documentation are updated;
+- complete validation passes or every nonzero result is accurately classified;
+- the implementation is committed and pushed with a clean final working tree, and this document is
+  updated with the same sections used by prior phases (checklist, findings, validation, work log,
+  ideas, final report).
+
+### Validation Commands
+
+Run and report exact exit codes:
+
+```bash
+npm run typecheck
+npm test
+npm run lint
+npm run build
+npm run build:desktop
+```
+
+Also run focused tests for:
+
+- the new AoE roster module;
+- `rpg-combo-apply`, AoE weapon attack, lens tier 1/2/3, and elite combat;
+- `rpg-encounter-collections` (unchanged membership);
+- the Phase Five readiness-policy and Phase Six Codex-policy suites (must remain unaffected).
+
+Browser smoke-test:
+
+- an AoE weapon hit against a mixed wave of ordinary, gem, and elite enemies, confirming splash
+  damage, lens status application, and status-combo triggering all still occur;
+- an elite enemy under AoE combo evaluation, confirming its dynamic tier type id and invulnerability
+  filter still apply;
+- Horizon Pentagon, Life colony, and ALIVEN AoE handling remain visually unchanged (bespoke, out of
+  scope);
+- console errors.
+
+Run the hidden Electron startup smoke after `npm run build:desktop`. Native Android/device validation
+is not required because this phase changes no platform branch or persisted state.
+
+### Constraints
+
+- No `any`. No new `as unknown as` cast; existing unrelated casts elsewhere are out of scope.
+- No combat, damage-value, targeting, draw-order, lens/weave, or status-combo behavioral change.
+- No per-frame or per-hit allocation is introduced beyond what already exists; the optional stretch
+  goal may only remove allocation, never add it.
+- No generic entity registry, event bus, visitor framework, or service locator.
+- No change to `RpgEncounterCollections`'s 74-array membership, reset profiles, or any Phase
+  Three/Four/Five/Six artifact.
+- No change to `horizonPentagonGroups`, `lifeColonies`, or `alivenGroups` AoE handling.
+- Do not silence lint or tests. Do not reformat unrelated files. Do not modify the separate inactive
+  Equatoria RPG project. Do not overwrite user changes or rewrite auto-sync commits.
+
+### Risks and Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| A family is silently dropped or gains a different type id during consolidation | Characterize exact membership/order/type-id first; require a failing regression for any intentional change. |
+| `eliteEnemies`'s dynamic tier id or `isInvuln` filter is flattened into the static roster and lost | Keep elite handling in its existing per-consumer branch; do not encode dynamic per-entity type ids in the static roster. |
+| The optional allocation-removal stretch goal introduces a new closure-per-hit abstraction | Treat it as optional; defer explicitly if it cannot be done as a direct loop-shape change. |
+| A shared helper accidentally merges damage-application, lens-status, and combo-evaluation semantics | Keep three distinct consumer loops over one shared roster; do not centralize the per-entity behavior itself. |
+| Auto-sync or user work appears during implementation | Recheck branch/HEAD/working-tree status before edits and before commit; preserve unrelated changes. |
+
+### Model-Neutral Agent Instructions
+
+These instructions apply to Codex, Claude, and any repository-capable implementation agent.
+
+#### Before editing
+
+- Read `AGENTS.md`/`agents.md`, `CLAUDE.md`, the required repository maps/conventions, current
+  status/TODO, architecture/decisions, and this plan in full.
+- Confirm Phases One through Six are complete; do not recreate their factories, policies, or tests.
+- Re-verify current source family/order/type-id counts instead of trusting this plan's line numbers.
+- Preserve unrelated and auto-sync work.
+- Record baseline branch, build, HEAD, upstream relation, working tree, and validation.
+
+#### During implementation
+
+- Add characterization tests before production edits.
+- Preserve exact membership, order, and type-id assignment unless a behavior defect is reproduced
+  first with a failing regression test.
+- Keep the three consumers' distinct per-entity behavior separate; only the family/type-id membership
+  is shared.
+- Do not introduce `any`, reflection, proxies, registries, service locators, or generalized
+  visitor/event infrastructure.
+- Run focused tests after each of the three consumer migrations.
+- Put any further cleanup ideas in this plan as deferred evidence; do not implement them.
+
+#### Before delivery
+
+- Increment `BUILD_NUMBER` once; do not change `SAVE_VERSION`.
+- Update only documentation whose responsibilities or status changed, plus this phase's checklist,
+  findings, validation, work log, ideas, and final report sections.
+- Run every validation command and report exact exit codes, counts, and warnings.
+- Distinguish introduced, pre-existing, environmental, and unverified results.
+- Review the diff and confirm only Phase Seven implementation/documentation is included.
+- Commit and push according to repository instructions; confirm local `main` matches `origin/main`
+  with a clean working tree.
+- Report branch, build, commit, push result, and final working-tree/upstream status.
+- Stop after Phase Seven.
+
+### Phase Seven Implementation Checklist
+
+- [ ] Read current repository instructions, status, architecture, and this plan.
+- [ ] Confirm branch, build, working tree, upstream state, and commits after the baseline.
+- [ ] Run baseline typecheck, tests, lint, web build, and desktop build.
+- [ ] Re-inventory the exact current family/order/type-id counts at all three call sites.
+- [ ] Add roster-membership and behavior-preservation characterization tests against current source.
+- [ ] Add the canonical static AoE family roster, compiler-checked against `RpgEncounterCollections`.
+- [ ] Migrate `_applyAoeDmg()`; run focused tests.
+- [ ] Migrate `aoeTargets`; run focused tests.
+- [ ] Migrate `comboArrays`; run focused tests.
+- [ ] Decide and record whether the optional per-entity-allocation removal is attempted or deferred.
+- [ ] Confirm no `as unknown as MinEnemy[]` / `as unknown as MinE[]` cast remains at the three sites.
+- [ ] Increment the build number and update only narrowly relevant documentation.
+- [ ] Run complete final validation and available browser/Electron smoke checks.
+- [ ] Review the full diff, commit, and push the complete phase.
+- [ ] Confirm a synchronized, clean final working tree and record the final phase report.
+
+This checklist, along with a Roster Membership Findings section, Validation Results table, Agent Work
+Log (using the standard work-log format defined earlier in this document), Ideas for Improvement, and
+Final Phase Report, must be completed and appended to this document by whichever agent implements
+Phase Seven. Do not begin implementation from this planning entry alone.
