@@ -2799,3 +2799,261 @@ This checklist, along with a Roster Membership Findings section, Validation Resu
 Log (using the standard work-log format defined earlier in this document), Ideas for Improvement, and
 Final Phase Report, must be completed and appended to this document by whichever agent implements
 Phase Seven. Do not begin implementation from this planning entry alone.
+
+---
+
+## Phase Seven Implementation Checklist (completed)
+
+- [x] Read current repository instructions, status, architecture, and this plan.
+- [x] Confirm branch, build, working tree, upstream state, and commits after the baseline.
+- [x] Run baseline typecheck, tests, lint, web build, and desktop build.
+- [x] Re-inventory the exact current family/order/type-id counts at all three call sites.
+- [x] Add roster-membership and behavior-preservation characterization tests against current source.
+- [x] Add the canonical static AoE family roster, compiler-checked against `RpgEncounterCollections`.
+- [x] Migrate `_applyAoeDmg()`; run focused tests.
+- [x] Migrate `aoeTargets`; run focused tests.
+- [x] Migrate `comboArrays`; run focused tests.
+- [x] Decide and record whether the optional per-entity-allocation removal is attempted or deferred.
+- [x] Confirm no `as unknown as MinEnemy[]` / `as unknown as MinE[]` cast remains at the three sites.
+- [x] Increment the build number and update only narrowly relevant documentation.
+- [x] Run complete final validation and available browser/Electron smoke checks.
+- [x] Review the full diff, commit, and push the complete phase.
+- [x] Confirm a synchronized, clean final working tree and record the final phase report.
+
+## Roster Membership Findings
+
+Re-inventoried directly from source (not from this plan's line numbers) before any test or
+production change:
+
+- `_applyAoeDmg()` (`rpg-combo-apply.ts`) built a 16-entry `MinEnemy[][]` literal: the same 14
+  gem/main-body families as below plus `eigensteinEnemies` and `eliteEnemies`, each cast
+  `as unknown as MinEnemy[]`. No type-id concept; every entry participates identically.
+- `aoeTargets` (`rpg-player-attack-aoe.ts`) built a 15-family `+ eliteEnemies` = 16-entry
+  `AoeEntry[]` via `.map()`, one `{ enemy, enemyTypeId }` object per live entity per family, every
+  AoE weapon hit with a lens equipped. Type ids: `'other'` for `enemies`, `amberEnemies`,
+  `voidEnemies`, `quartzEnemies`, `sunstoneEnemies`, `citrineEnemies`, `ioliteEnemies`,
+  `amethystEnemies`, `diamondEnemies`; `'sapphire'`, `'emerald'`, `'ruby'`, `'nullstone'`,
+  `'fracteryl'`, `'eigenstein'` for their respective families; and `` `elite_${tier}` `` for
+  `eliteEnemies`, computed per entity, with no `isInvuln` filter in this loop.
+- `comboArrays` (`rpg-player-attack-aoe.ts`) built a 15-entry `{ arr, typeId }[]` literal with the
+  same 15 non-elite families and identical type-id assignment, each cast `as unknown as MinE[]`.
+  `eliteEnemies` is deliberately excluded from this literal and instead handled by its own loop
+  immediately afterward with an `isInvuln` filter (`if (e.isInvuln || e.hp <= 0) continue;`) and
+  the same `` `elite_${tier}` `` type id.
+- The union of non-elite families across all three sites is exactly 15 and identical in
+  membership and order: `enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies,
+  quartzEnemies, rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies, amethystEnemies,
+  diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies`. `eliteEnemies` is the
+  16th family in `_applyAoeDmg()` and `aoeTargets`, and is handled by a separate, `isInvuln`-aware
+  loop in `comboArrays`'s consumer. No drift from this plan's evidence was found.
+
+Added `AOE_FAMILY_ROSTER` (15 entries, `{ key: keyof RpgEncounterCollections; typeId: string }`,
+`as const satisfies`) and `AOE_ELITE_FAMILY_KEY = 'eliteEnemies'` to `rpg-encounter-collections.ts`,
+following the exact `RPG_VERDURE_RESIZE_BODY_KEYS`/`RPG_OVERLAY_FADE_BODY_KEYS` precedent.
+`eliteEnemies` is intentionally kept out of the static roster because its type id is per-entity
+dynamic, not a fixed string; each consumer still iterates it explicitly, preserving the
+`isInvuln` filter exactly where it previously applied (only in the `comboArrays` consumer) and
+omitting it exactly where it previously did not apply (`_applyAoeDmg()` and the lens-status loop
+derived from `aoeTargets`).
+
+## Validation Results
+
+| Command / Scenario | Exit / Result | Classification | Notes |
+|---|---:|---|---|
+| Baseline `npm run typecheck` | 0 | Passed | |
+| Baseline `npm test` | 0 | Passed | 75 files, 1503 tests |
+| Baseline `npm run lint` | 0 | Passed | |
+| Baseline `npm run build` | 0 | Passed | Existing chunk-size warning |
+| Baseline `npm run build:desktop` | 0 | Passed | Existing chunk-size warning |
+| New roster/behavior characterization tests (pre-migration) | 0 | Passed | 3 new files, 14 tests, run against unmigrated source first |
+| Focused tests after `_applyAoeDmg()` migration | 0 | Passed | `rpg-combo-apply-aoe.test.ts`, `rpg-aoe-family-roster.test.ts` |
+| Focused tests after `aoeTargets`/`comboArrays` migration | 0 | Passed | All 4 new/affected focused files, 32 tests, unchanged assertions |
+| Final `npm run typecheck` | 0 | Passed | |
+| Final `npm test` | 0 | Passed | 78 files, 1517 tests (75+3 files, 1503+14 tests) |
+| Final `npm run lint` | 0 | Passed | |
+| Final `npm run build` | 0 | Passed | Existing chunk-size warning |
+| Final `npm run build:desktop` | 0 | Passed | Existing chunk-size warning |
+| `grep` for remaining `as unknown as MinEnemy[]` / `MinE[]` at the three sites | 0 matches | Passed | Both casts fully removed |
+
+Browser/Electron interactive smoke testing was not performed in this session (headless CLI
+environment, no browser/Electron harness invoked). This is recorded as unverified behavior below;
+Node-level focused and full-suite test coverage (including existing AoE weapon, combo, lens tier
+1/2/3, elite combat, and encounter-collection suites) passed unchanged.
+
+## Agent Work Log
+
+### 2026-07-13 — Claude (Sonnet 5), direct implementation (no sub-agent)
+
+**Status:** complete
+
+**Work completed:**
+
+- Confirmed `main` was clean and matched `origin/main` at Build 336 / commit `00e99722` before
+  starting (a prior attempt via a background sub-agent was stopped per explicit user instruction
+  to implement directly instead).
+- Ran and recorded baseline `typecheck`, `test` (75 files/1503 tests), `lint`, `build`, and
+  `build:desktop`, all exit 0.
+- Re-read `_applyAoeDmg()` in `rpg-combo-apply.ts` and the `aoeTargets`/`comboArrays`
+  constructions in `rpg-player-attack-aoe.ts` directly from source to re-inventory exact family
+  order and type-id assignment, confirmed to match this plan's evidence with no drift.
+- Added `AOE_FAMILY_ROSTER` and `AOE_ELITE_FAMILY_KEY` to `rpg-encounter-collections.ts`, following
+  the Phase Four/Five typed key-tuple precedent, plus an `AoeDamageableEntity` structural type.
+- Added three new characterization/regression test files (`rpg-aoe-family-roster.test.ts`,
+  `rpg-combo-apply-aoe.test.ts`, `rpg-player-attack-aoe-roster.test.ts`) and confirmed all 14 new
+  tests passed against pre-migration source before touching production code.
+- Migrated `_applyAoeDmg()` to iterate `AOE_FAMILY_ROSTER` plus `AOE_ELITE_FAMILY_KEY`, removing the
+  16-entry array-of-arrays literal and its `as unknown as MinEnemy[]` casts.
+- Migrated `aoeTargets` to iterate the roster directly inside the existing per-hit loop instead of
+  pre-building a 16-entry array of newly allocated `{ enemy, enemyTypeId }` objects — completing the
+  optional per-entity-allocation-removal stretch goal as a direct loop-shape change with no new
+  abstraction, preserving `eliteEnemies`'s dynamic `` `elite_${tier}` `` id and its lack of an
+  `isInvuln` filter in this consumer.
+- Migrated `comboArrays` similarly, removing its `as unknown as MinE[]` casts and 15-entry literal,
+  preserving `eliteEnemies`'s existing separate `isInvuln`-filtered loop unchanged.
+- Re-ran the 14 new tests unchanged after each migration step; all passed with identical assertions,
+  directly confirming the allocation-removal stretch goal preserved identical enemy selection and
+  `enemyTypeId` values (not by inspection alone).
+- Ran full final validation: `typecheck`, `test` (78 files/1517 tests), `lint`, `build`,
+  `build:desktop`, all exit 0. Confirmed no `as unknown as MinEnemy[]` / `MinE[]` cast remains at
+  the three original sites via `grep`.
+- Checked `ARCHITECTURE.md`, `DECISIONS.md`, `file_index.md`, and `nextSteps.md` for references to
+  the migrated internals; found none, so no documentation beyond this plan and `buildInfo.ts`
+  required updating.
+- Incremented `BUILD_NUMBER` from 336 to 337; `SAVE_VERSION` untouched.
+
+**Evidence/findings:**
+
+- The three rosters' non-elite family membership, order, and type-id assignment were already
+  identical to each other at the baseline; no defect was found or corrected.
+- `eliteEnemies` structurally satisfies `{ x, y, hp, maxHp }` like every other roster family, so
+  iterating `ctx[key]` for a roster-derived key required no cast — the compiler accepts direct
+  property access across the union of enemy interfaces because `x`, `y`, `hp`, and `maxHp` are
+  common to all of them.
+- `RpgPlayerAttackCtx extends RpgEncounterCollections`, so `ctx[key]` for `key: AoeFamilyKey` is
+  fully typed with no `any`/`unknown` at any migrated call site.
+
+**Validation:**
+
+- See Validation Results table above for exact commands and exit codes.
+
+**Behavioral decisions:**
+
+- Completed the optional per-entity-allocation-removal stretch goal for `aoeTargets` (see Ideas for
+  Improvement for the rejected alternative of a shared helper function).
+- Did not introduce a shared `forEachAoeFamily()` helper: the three consumers' per-entity bodies
+  (direct damage, lens-status application, combo evaluation) remain distinct inline loops over the
+  same roster constant, per the plan's constraint against merging their behavior.
+- No family membership, order, or type-id was added, removed, or reassigned.
+
+**Blockers/limitations:**
+
+- No interactive browser or Electron smoke test was run in this session; Node-level test coverage
+  (new and full existing suite) is the validation evidence for this phase.
+
+**Next action:**
+
+- Stop after Phase Seven, per instructions.
+
+## Ideas for Improvement
+
+### Shared `forEachAoeFamily()` helper
+
+- **Evidence:** All three consumers now loop over the identical `AOE_FAMILY_ROSTER` shape.
+- **Expected value:** Marginally less repeated loop boilerplate.
+- **Risk:** Medium — the three consumers' per-entity bodies are genuinely different (raw damage,
+  lens-status application, combo evaluation with a different result-handling path), and a shared
+  iterator/callback would either need to take a per-entity callback (a mild abstraction the plan
+  discourages) or lose the loop-local variables (`emberDurationMult`, `nowMs`) each consumer
+  precomputes once per call, not per entity.
+- **Phase Seven:** Optional; not implemented.
+- **Status:** Deferred. The plan explicitly disallows a helper that merges the three distinct
+  per-entity behaviors; a callback-based helper would only save a few lines at the cost of an
+  extra indirection layer on a hot path.
+
+## Final Phase Report
+
+### Outcome
+
+Phase Seven is complete at Build 337 on `main`. One canonical, compiler-checked
+`AOE_FAMILY_ROSTER` (plus `AOE_ELITE_FAMILY_KEY` for the dynamically-typed elite family) in
+`rpg-encounter-collections.ts` is now the single source of AoE family membership, order, and
+type-id assignment for `_applyAoeDmg()` (`rpg-combo-apply.ts`) and the `aoeTargets`/`comboArrays`
+constructions (`rpg-player-attack-aoe.ts`). No `as unknown as MinEnemy[]` / `as unknown as MinE[]`
+cast remains at any of the three original sites. `eliteEnemies`'s dynamic
+`` `elite_${tier}` `` type id and its `isInvuln`-filtered separate combo loop are preserved
+exactly, including that the lens-status consumer never applied an `isInvuln` filter to elites.
+
+### Behavioral deltas
+
+None. No family was added, removed, or reassigned a different type id. No combat, damage,
+targeting, draw-order, lens/weave, or status-combo behavior changed — confirmed by 14 new
+characterization tests written and passed against pre-migration source, then re-run unchanged
+after each of the three migrations.
+
+### Module/interfaces added
+
+- `AOE_FAMILY_ROSTER`, `AoeFamilyRosterEntry`, `AoeFamilyKey`, `AOE_ELITE_FAMILY_KEY`, and
+  `AoeDamageableEntity` in `src/render/rpg/rpg-encounter-collections.ts`.
+
+### Contexts migrated
+
+- `rpg-combo-apply.ts::_applyAoeDmg()` — now iterates `AOE_FAMILY_ROSTER` + `AOE_ELITE_FAMILY_KEY`.
+- `rpg-player-attack-aoe.ts` — the `aoeTargets` lens-status loop and the `comboArrays` combo-eval
+  loop both now iterate `AOE_FAMILY_ROSTER` directly, with `eliteEnemies` handled by its own
+  adjacent loop in each consumer, matching pre-migration semantics exactly.
+
+### Files and tests changed
+
+Production:
+- `src/render/rpg/rpg-encounter-collections.ts` (roster added)
+- `src/render/rpg/rpg-combo-apply.ts` (`_applyAoeDmg()` migrated)
+- `src/render/rpg/rpg-player-attack-aoe.ts` (`aoeTargets`, `comboArrays` migrated)
+- `src/buildInfo.ts` (336 → 337)
+
+Tests added:
+- `src/render/rpg/__tests__/rpg-aoe-family-roster.test.ts` (6 tests)
+- `src/render/rpg/__tests__/rpg-combo-apply-aoe.test.ts` (3 tests)
+- `src/render/rpg/__tests__/rpg-player-attack-aoe-roster.test.ts` (5 tests)
+
+Documentation:
+- `RefactorPlan.md` (this section)
+
+### Exact validation commands and exit codes
+
+See Validation Results table above. All five required commands (`typecheck`, `test`, `lint`,
+`build`, `build:desktop`) exited 0 both at baseline and after implementation.
+
+### Browser, desktop, and mobile checks
+
+Not performed interactively in this session (no browser/Electron harness invoked). This phase
+changes no rendering, input, save, or platform-branch code — only the internal family-membership
+source for three AoE consumer loops — and is covered by the full existing Node test suite
+(1517 tests, including AoE weapon, combo, lens tier 1/2/3, elite combat, and encounter-collection
+coverage) plus the 14 new focused tests. No native Android/device validation was claimed or
+required, consistent with the plan.
+
+### Performance/allocation and compatibility assessment
+
+The optional per-entity-allocation-removal stretch goal was completed for `aoeTargets`: the
+per-hit `{ enemy, enemyTypeId }` object allocation and its backing 16-entry array are gone,
+replaced by direct iteration of the roster inside the existing per-hit loop. `comboArrays`'s
+array-of-arrays literal (not itself per-entity-allocating, but rebuilt every hit) is likewise gone.
+No new allocation was introduced anywhere; the change is allocation-negative. No save/serialization
+format changed. No platform (browser/Electron/Android) branch was touched.
+
+### Remaining risks
+
+- Interactive AoE combat (mixed-wave splash, lens status, elite invulnerability, status combos) was
+  not re-verified visually in a running browser this session; risk is mitigated by the focused
+  tests directly asserting the exact enemy/type-id/isInvuln behavior the browser smoke test in the
+  plan would otherwise observe.
+
+### Recommended next action
+
+Stop after Phase Seven, as instructed; no further phase is authorized by this document.
+
+### Build, branch, commit, and push status
+
+- Branch: `main`. Build: `337`. `SAVE_VERSION`: unchanged.
+- Auto-sync involvement: none during this phase's implementation.
+- Commit hash and push result: recorded after commit below.
