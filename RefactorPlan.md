@@ -3057,3 +3057,340 @@ Stop after Phase Seven, as instructed; no further phase is authorized by this do
 - Branch: `main`. Build: `337`. `SAVE_VERSION`: unchanged.
 - Auto-sync involvement: none during this phase's implementation.
 - Commit hash and push result: recorded after commit below.
+
+---
+
+## Phase Eight — Dev Status-Combo Nearest-Enemy Search on the Canonical AoE Roster
+
+**Planning baseline date:** 2026-07-13
+**Baseline branch:** `main`
+**Baseline build:** `337`
+**Baseline commit:** `fbc8960d`
+**Baseline working tree:** Clean; `main` matched `origin/main`
+**Status:** Planned only. Do not begin implementation from this document.
+
+### Decision
+
+A further narrowly scoped, behavior-preserving phase is justified.
+
+Phase Seven introduced `AOE_FAMILY_ROSTER` as the single canonical source of AoE enemy-family
+membership and type-id assignment, and migrated its three original consumers
+(`_applyAoeDmg()`, `aoeTargets`, `comboArrays`). A fourth, structurally identical consumer of the
+same duplicated pattern exists outside Phase Seven's scope: `devApplyStatusCombo()` in
+`src/render/rpg/rpg-render.ts` builds its own independent 8-array nearest-enemy search with the
+same `as unknown as MinE[]` casts Phase Seven removed everywhere else. Phase Eight should migrate
+this one remaining consumer to read family membership from `AOE_FAMILY_ROSTER` instead of a
+hand-maintained literal, removing the last instance of this specific cast pattern in the AoE
+family-membership call sites. It does not touch AoE damage, lens-status, or combo-evaluation
+behavior (already Phase Seven's domain), boss handling, or the dev status-combo presets themselves.
+
+This phase is distinct from the completed work:
+
+- Phase One centralized trace-overlay frame scheduling.
+- Phase Two established owned application-runtime lifecycle.
+- Phase Three introduced the canonical `RpgEncounterCollections` owner and reset profiles.
+- Phase Four introduced typed Verdure-resize and overlay-fade body profiles.
+- Phase Five derived attack contexts from canonical collections and extracted the readiness policy.
+- Phase Six replaced the reflective Codex damage-multiplier wrapper with a typed policy record.
+- Phase Seven introduced `AOE_FAMILY_ROSTER` and migrated its three original AoE-damage/lens/combo
+  consumers, explicitly leaving any other call site out of scope.
+- Phase Eight is limited to `devApplyStatusCombo()`'s nearest-enemy search. It does not create a
+  general per-family registry, event bus, or visitor abstraction, and it does not touch
+  `_applyAoeDmg()`, `aoeTargets`, `comboArrays`, boss-enemy handling, or the dev status-combo preset
+  switch statement's status-application logic.
+
+### Current-Code Evidence
+
+#### A fourth independently authored family array, outside Phase Seven's three sites
+
+`src/render/rpg/rpg-render.ts::devApplyStatusCombo()` (roughly lines 2395–2420) builds its own
+8-array `MinE[][]` literal to find the nearest live enemy to the debug mote, then separately checks
+`bossEnemy`:
+
+```ts
+type MinE = { x: number; y: number; hp: number };
+const allArrays: MinE[][] = [
+  enemies as unknown as MinE[],
+  rubyEnemies as unknown as MinE[], emeraldEnemies as unknown as MinE[],
+  sapphireEnemies as unknown as MinE[], nullstoneEnemies as unknown as MinE[],
+  fracterylEnemies as unknown as MinE[], eigensteinEnemies as unknown as MinE[],
+  eliteEnemies as unknown as MinE[],
+];
+```
+
+This is a **subset** of `AOE_FAMILY_ROSTER`'s 15 families — it omits `amberEnemies`, `voidEnemies`,
+`quartzEnemies`, `sunstoneEnemies`, `citrineEnemies`, `ioliteEnemies`, `amethystEnemies`, and
+`diamondEnemies`. This 8-of-15 subset is current behavior and must be re-verified and preserved
+exactly, not silently expanded to the full roster; expanding coverage without a reproduced defect
+and documented intent would be a behavioral change this phase does not authorize. The `bossEnemy`
+check at line 2415–2418 (`bossEnemy as unknown as object`) is separate, bespoke, boss-specific logic
+already outside the family-roster pattern and stays as-is.
+
+Current source is authoritative. The implementing agent must re-inventory the exact 8 families, their
+order, and confirm the omission of the other 7 canonical AoE families is intentional current behavior
+(this dev tool searches only a fixed debug subset, not full AoE coverage) before writing
+characterization tests.
+
+#### Consequences of the duplication
+
+- This is the same class of defect as Phase Seven's motivation: a hand-maintained array of casts
+  that must be kept manually synchronized with `RpgEncounterCollections`, except here the roster is
+  intentionally a subset, so "synchronization" means "stay a subset of `AOE_FAMILY_ROSTER`'s keys,"
+  not "match it exactly."
+- Every `as unknown as MinE[]` cast at this site bypasses the compiler at the point family membership
+  is authored, exactly like the sites Phase Seven already fixed.
+- No existing test asserts this dev tool's exact 8-family membership or order.
+- This is a dev-only debug helper (invoked from the dev panel, not the hot combat path), so risk is
+  low, but it is still current shipped code with real casts and deserves the same treatment applied
+  everywhere else in this family.
+
+#### Existing canonical seam
+
+`AOE_FAMILY_ROSTER`, `AoeFamilyRosterEntry`, `AoeFamilyKey`, and `AOE_ELITE_FAMILY_KEY` already exist
+in `src/render/rpg/rpg-encounter-collections.ts` (added by Phase Seven). Phase Eight should filter
+this existing roster down to the current 8 families this consumer already searches (plus
+`eliteEnemies` via `AOE_ELITE_FAMILY_KEY`), rather than inventing a second roster or a new pattern.
+
+### Objective and Behavioral Contract
+
+Migrate `devApplyStatusCombo()`'s nearest-enemy search to iterate a filtered view of
+`AOE_FAMILY_ROSTER` (the existing 8 families it already searches, by key) plus
+`AOE_ELITE_FAMILY_KEY`, instead of its own hand-maintained 8-entry `MinE[][]` literal, preserving:
+
+- the exact current 8-family membership and search order;
+- the exact current nearest-enemy-by-squared-distance selection logic;
+- the separate, unmodified `bossEnemy` distance check and its precedence in `nearest` selection;
+- the exact current behavior of the `preset` switch statement that follows (no change to which
+  statuses/lens effects are applied or to `incrementRiftScarredStacks`).
+
+### Scope Boundaries
+
+#### Required
+
+1. Re-inventory `devApplyStatusCombo()`'s exact current 8 families and order directly from source.
+2. Add a characterization test asserting this exact family set/order and the nearest-enemy selection
+   behavior (squared-distance comparison, `hp <= 0` exclusion, boss precedence) before any production
+   change.
+3. Migrate the `allArrays` construction to derive from `AOE_FAMILY_ROSTER` filtered to the 8 keys this
+   consumer already uses, plus `eliteEnemies` via `AOE_ELITE_FAMILY_KEY`, removing all `as unknown as
+   MinE[]` casts at this site in favor of the `AoeDamageableEntity`/roster-derived typing Phase Seven
+   established.
+4. Leave the `bossEnemy` check, the `preset` switch statement, and all status/lens-application calls
+   completely unchanged.
+5. Update the build number and only the documentation whose responsibilities actually change.
+
+#### Optional only when proven low-risk and mechanical
+
+- A small local helper that filters `AOE_FAMILY_ROSTER` to a fixed key subset, if it stays a plain
+  array filter with no new abstraction layer and is not shared outside this one call site unless a
+  second consumer with an identical subset is found during implementation.
+
+#### Deferred
+
+- Expanding this dev tool's 8-family search to the full 15-family roster (would change which enemies
+  the debug tool can target; requires a documented, intentional decision, not a silent side effect of
+  reusing the roster).
+- The `bossEnemy as unknown as object` cast — bespoke, single-entity, not a family-roster membership
+  issue; out of scope for this phase.
+- `rpg-elite-buff.ts:92`'s `enemy as unknown as { shieldHp: number; maxShieldHp: number }` cast —
+  a separate, single-site structural narrowing unrelated to AoE family rosters; not part of this
+  phase's evidence base and would need its own characterization if picked up later.
+- Any further consolidation of dev-panel/debug-only code paths, renderer decomposition, ECS
+  conversion, a generic entity registry, event bus, or visitor framework.
+- Combat balance, damage formulas, status-combo rules, lens/weave logic, targeting, or draw order.
+
+### Required Characterization Tests
+
+Add tests before production changes.
+
+#### Family-search membership
+
+- Assert `devApplyStatusCombo()`'s current 8-family search set and order:
+  `enemies`, `rubyEnemies`, `emeraldEnemies`, `sapphireEnemies`, `nullstoneEnemies`,
+  `fracterylEnemies`, `eigensteinEnemies`, `eliteEnemies`.
+- Assert every one of those 8 keys exists in `AOE_FAMILY_ROSTER` (or is `AOE_ELITE_FAMILY_KEY` for
+  `eliteEnemies`), so the filtered-roster migration is provably a subset, not a re-authored list.
+
+#### Behavior preservation
+
+- Seed live and dead (`hp <= 0`) enemies across several of the 8 searched families and confirm the
+  nearest-by-squared-distance entity is selected identically before and after migration.
+- Seed an enemy in a family NOT among the 8 (e.g. `amberEnemies`) closer to the mote than any searched
+  enemy, and confirm it is still correctly excluded from selection after migration (proving the subset
+  behavior, not full-roster behavior, is preserved).
+- Seed a live `bossEnemy` closer than any family enemy and confirm boss precedence in `nearest`
+  selection is unchanged.
+- For at least one `preset` case (e.g. `'steamBurst'`), confirm the same status/lens calls fire against
+  the same selected `nearest` entity before and after migration.
+
+#### Existing coverage
+
+Do not weaken existing coverage. Run any existing dev-panel, status-combo, lens tier 1/2/3, and
+encounter-collection tests that exist at implementation time, plus the full Phase Five/Six/Seven test
+suites.
+
+### Implementation Sequence
+
+1. Read `AGENTS.md`/`agents.md`, `CLAUDE.md`, current repository maps/status/TODO,
+   `ARCHITECTURE.md`/`DECISIONS.md`, and this entire plan (including Phase Seven, whose roster this
+   phase reuses).
+2. Confirm branch, build, working tree, upstream divergence, and commits after `fbc8960d`.
+3. Treat current source as authoritative; re-inventory `devApplyStatusCombo()`'s exact 8-family set
+   and order before writing tests.
+4. Run baseline `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`, and
+   `npm run build:desktop`.
+5. Add the family-search-membership and behavior-preservation characterization tests against the
+   current (pre-migration) implementation; confirm they pass against current source.
+6. Migrate `allArrays` in `devApplyStatusCombo()` to derive from `AOE_FAMILY_ROSTER` filtered to the
+   8 confirmed keys, plus `AOE_ELITE_FAMILY_KEY`, removing the `as unknown as MinE[]` casts.
+7. Run focused tests; confirm identical nearest-enemy selection and identical `preset` behavior.
+8. Confirm no `as unknown as MinE[]` cast remains at this site (the separate `bossEnemy as unknown as
+   object` cast is explicitly out of scope and must remain unless it is also being addressed with its
+   own characterization — it is not part of this phase's required deliverable).
+9. Run complete validation and available browser/Electron smoke checks (dev panel status-combo debug
+   action).
+10. Update the build number and only narrowly relevant documentation.
+11. Review the full diff for family-set, order, and selection-logic drift, and for unrelated changes.
+12. Record exact commands, exit codes, limitations, commit hash, push result, and final working-tree
+    status in this document.
+13. Commit and push as one coherent phase, then stop.
+
+### Acceptance Criteria
+
+Phase Eight is complete only when:
+
+- `devApplyStatusCombo()`'s nearest-enemy search derives its family list from `AOE_FAMILY_ROSTER`
+  (filtered to its existing 8 keys) and `AOE_ELITE_FAMILY_KEY` instead of an independent literal;
+- no `as unknown as MinE[]` cast remains in `devApplyStatusCombo()`'s `allArrays` construction;
+- the exact current 8-family membership, order, and nearest-by-squared-distance selection logic are
+  unchanged, including correct exclusion of the 7 non-searched families and unchanged boss precedence;
+- the `bossEnemy` check and the `preset` switch statement's status/lens-application behavior are
+  byte-for-byte unchanged;
+- no family is added to or removed from this dev tool's search without a reproduced regression and
+  documented intended behavior;
+- build number and only narrowly relevant documentation are updated;
+- complete validation passes or every nonzero result is accurately classified;
+- the implementation is committed and pushed with a clean final working tree, and this document is
+  updated with the same sections used by prior phases (checklist, findings, validation, work log,
+  ideas, final report).
+
+### Validation Commands
+
+Run and report exact exit codes:
+
+```bash
+npm run typecheck
+npm test
+npm run lint
+npm run build
+npm run build:desktop
+```
+
+Also run focused tests for:
+
+- the new/updated `devApplyStatusCombo()` characterization tests;
+- `rpg-encounter-collections` (unchanged `AOE_FAMILY_ROSTER` membership — this phase must not add,
+  remove, or reorder any entry in the roster itself, only filter it);
+- the Phase Five/Six/Seven readiness-policy, Codex-policy, and AoE-roster suites (must remain
+  unaffected).
+
+Browser smoke-test:
+
+- trigger each `devApplyStatusCombo()` preset from the dev panel against a mixed wave including at
+  least one enemy from a non-searched family (e.g. `amberEnemies`) positioned closer to the mote than
+  any searched-family enemy, confirming the closer non-searched enemy is still correctly ignored;
+- trigger a preset with a live boss present, confirming boss precedence is unchanged;
+- console errors.
+
+Run the hidden Electron startup smoke after `npm run build:desktop`. Native Android/device validation
+is not required because this phase changes no platform branch or persisted state.
+
+### Constraints
+
+- No `any`. No new `as unknown as` cast; existing unrelated casts elsewhere (including `bossEnemy as
+  unknown as object` at the same call site) are out of scope.
+- No change to which 8 families this dev tool searches, their order, or nearest-enemy selection logic.
+- No change to the `preset` switch statement's status/lens-application behavior.
+- No change to `AOE_FAMILY_ROSTER`'s own membership, order, or type-id assignment (Phase Seven's
+  artifact) — this phase only reads/filters it.
+- No per-frame or per-hit allocation is introduced beyond what already exists (this is a dev-only,
+  user-triggered debug action, not a hot path, but the same allocation discipline applies).
+- No generic entity registry, event bus, visitor framework, or service locator.
+- No change to `RpgEncounterCollections`'s membership, reset profiles, or any Phase
+  Three/Four/Five/Six/Seven artifact.
+- Do not silence lint or tests. Do not reformat unrelated files. Do not modify the separate inactive
+  Equatoria RPG project. Do not overwrite user changes or rewrite auto-sync commits.
+
+### Risks and Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| The 8-family subset is silently expanded to the full 15-family roster, changing which enemies the dev tool can target | Characterize the exact current 8-family set first; require a documented, intentional decision (deferred by default) for any expansion. |
+| A family is silently dropped from the 8, making the debug tool blind to a family it currently searches | Assert exact membership and order in a characterization test before migration. |
+| Boss precedence or nearest-by-squared-distance logic is altered while restructuring the array construction | Keep the boss check and distance-comparison loop shape unchanged; only replace the literal's construction. |
+| Auto-sync or user work appears during implementation | Recheck branch/HEAD/working-tree status before edits and before commit; preserve unrelated changes. |
+
+### Model-Neutral Agent Instructions
+
+These instructions apply to Codex, Claude, and any repository-capable implementation agent.
+
+#### Before editing
+
+- Read `AGENTS.md`/`agents.md`, `CLAUDE.md`, the required repository maps/conventions, current
+  status/TODO, architecture/decisions, and this plan in full, including Phase Seven.
+- Confirm Phases One through Seven are complete; do not recreate their factories, policies, rosters,
+  or tests.
+- Re-verify current source's exact 8-family search set and order instead of trusting this plan's line
+  numbers.
+- Preserve unrelated and auto-sync work.
+- Record baseline branch, build, HEAD, upstream relation, working tree, and validation.
+
+#### During implementation
+
+- Add characterization tests before production edits.
+- Preserve exact family set, order, and selection logic unless a behavior defect is reproduced first
+  with a failing regression test.
+- Do not expand the 8-family subset to match the full `AOE_FAMILY_ROSTER` without a documented,
+  intentional decision — default to preserving the subset exactly.
+- Do not introduce `any`, reflection, proxies, registries, service locators, or generalized
+  visitor/event infrastructure.
+- Run focused tests after the migration.
+- Put any further cleanup ideas in this plan as deferred evidence; do not implement them.
+
+#### Before delivery
+
+- Increment `BUILD_NUMBER` once; do not change `SAVE_VERSION`.
+- Update only documentation whose responsibilities or status changed, plus this phase's checklist,
+  findings, validation, work log, ideas, and final report sections.
+- Run every validation command and report exact exit codes, counts, and warnings.
+- Distinguish introduced, pre-existing, environmental, and unverified results.
+- Review the diff and confirm only Phase Eight implementation/documentation is included.
+- Commit and push according to repository instructions; confirm local `main` matches `origin/main`
+  with a clean working tree.
+- Report branch, build, commit, push result, and final working-tree/upstream status.
+- Stop after Phase Eight.
+
+### Phase Eight Implementation Checklist
+
+- [ ] Read current repository instructions, status, architecture, and this plan (including Phase
+      Seven).
+- [ ] Confirm branch, build, working tree, upstream state, and commits after the baseline.
+- [ ] Run baseline typecheck, tests, lint, web build, and desktop build.
+- [ ] Re-inventory `devApplyStatusCombo()`'s exact current 8-family set and order.
+- [ ] Add family-search-membership and behavior-preservation characterization tests against current
+      source.
+- [ ] Migrate `allArrays` to derive from `AOE_FAMILY_ROSTER` (filtered) and `AOE_ELITE_FAMILY_KEY`.
+- [ ] Run focused tests; confirm identical selection and preset behavior.
+- [ ] Confirm no `as unknown as MinE[]` cast remains in `devApplyStatusCombo()`'s `allArrays`
+      construction.
+- [ ] Increment the build number and update only narrowly relevant documentation.
+- [ ] Run complete final validation and available browser/Electron smoke checks.
+- [ ] Review the full diff, commit, and push the complete phase.
+- [ ] Confirm a synchronized, clean final working tree and record the final phase report.
+
+This checklist, along with a Family-Search Findings section, Validation Results table, Agent Work
+Log (using the standard work-log format defined earlier in this document), Ideas for Improvement, and
+Final Phase Report, must be completed and appended to this document by whichever agent implements
+Phase Eight. Do not begin implementation from this planning entry alone.
+
+---
