@@ -47,6 +47,7 @@ import { startBossIntro, onBossIntroCassetteStarted, onBossIntroCassetteDone, re
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import {
+  applyVerdureResizeBodyProfile,
   clearForBossEntry,
   clearForZoneSwitch,
   createRpgEncounterCollections,
@@ -892,19 +893,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     };
 
     pushEntity(mote, RPG_MOTE_SIZE * 0.5 + 2);
-    for (const arrays of [
-      enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies, quartzEnemies,
-      rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies, amethystEnemies,
-      diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
-      polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies, dustWispEnemies,
-      ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies, jellyfishEnemies, eliteJellyfishEnemies,
-      clothGhostEnemies, plantTurretEnemies, gearInsectEnemies, spiderCrawlerEnemies,
-      moteSwarmEnemies, shadowHandEnemies, sandFishEnemies, quartzFishEnemies,
-      rubyFishEnemies, sunstoneFishEnemies, emeraldFishEnemies, sapphireFishEnemies,
-      amethystFishEnemies, diamondFishEnemies,
-    ] as Array<Array<{ x: number; y: number; vx?: number; vy?: number }>>) {
-      for (const entity of arrays) pushEntity(entity, 8);
-    }
+    applyVerdureResizeBodyProfile(collections, pushEntity);
     clearVerdurePlants(verdurePlants);
   }
 

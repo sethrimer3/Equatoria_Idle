@@ -4,11 +4,16 @@ import {
   BOSS_ENTRY_CLEAR_KEYS,
   NORMAL_DEATH_RESTART_CLEAR_KEYS,
   RPG_ENCOUNTER_COLLECTION_KEYS,
+  RPG_OVERLAY_FADE_BODY_KEYS,
+  RPG_VERDURE_RESIZE_BODY_KEYS,
   ZONE_SWITCH_CLEAR_KEYS,
+  applyVerdureResizeBodyProfile,
   clearForBossEntry,
   clearForDeathRestart,
   clearForZoneSwitch,
   createRpgEncounterCollections,
+  hasOverlayFadeOverlap,
+  stepOverlayFadeAlpha,
   type RpgEncounterCollections,
 } from '../rpg-encounter-collections';
 import type { RpgUpdateCtx } from '../rpg-render-update';
@@ -16,6 +21,7 @@ import type { RpgDrawCtx } from '../rpg-render-draw';
 import type { RpgTargetingCtx } from '../rpg-targeting-types';
 import type { WaveManagerCtx } from '../rpg-wave-manager';
 import type { RpgDeathRestartCtx } from '../rpg-death-restart';
+import type { RpgFieldSpace } from '../rpgFieldSpace';
 import { doRestart } from '../rpg-death-restart';
 import { createBossAttackState } from '../rpg-boss-attack-types';
 
@@ -140,6 +146,180 @@ describe('RPG encounter collection factory', () => {
     expect(second.enemies).toEqual([]);
     expect(second.bossProjectiles).toEqual([]);
     expect(second.hitEffects).toEqual([]);
+  });
+});
+
+describe('RPG encounter semantic body profiles', () => {
+  const expectedVerdureResizeKeys = [
+    'enemies', 'sapphireEnemies', 'emeraldEnemies', 'amberEnemies', 'voidEnemies',
+    'quartzEnemies', 'rubyEnemies', 'sunstoneEnemies', 'citrineEnemies', 'ioliteEnemies',
+    'amethystEnemies', 'diamondEnemies', 'nullstoneEnemies', 'fracterylEnemies',
+    'eigensteinEnemies', 'eliteEnemies', 'polyominoEnemies', 'fissilePolyominoEnemies',
+    'refractorPolyominoEnemies', 'dustWispEnemies', 'ribbonWormEnemies',
+    'lanternMothEnemies', 'eyeStalkEnemies', 'jellyfishEnemies', 'eliteJellyfishEnemies',
+    'clothGhostEnemies', 'plantTurretEnemies', 'gearInsectEnemies', 'spiderCrawlerEnemies',
+    'moteSwarmEnemies', 'shadowHandEnemies', 'sandFishEnemies', 'quartzFishEnemies',
+    'rubyFishEnemies', 'sunstoneFishEnemies', 'emeraldFishEnemies', 'sapphireFishEnemies',
+    'amethystFishEnemies', 'diamondFishEnemies',
+  ] as const satisfies readonly EncounterCollectionKey[];
+
+  const expectedOverlayFadeKeys = [
+    'enemies', 'sapphireEnemies', 'emeraldEnemies', 'amberEnemies', 'voidEnemies',
+    'quartzEnemies', 'rubyEnemies', 'sunstoneEnemies', 'citrineEnemies', 'ioliteEnemies',
+    'amethystEnemies', 'diamondEnemies', 'nullstoneEnemies', 'fracterylEnemies',
+    'eigensteinEnemies', 'eliteEnemies', 'polyominoEnemies', 'fissilePolyominoEnemies',
+    'refractorPolyominoEnemies', 'binaryRingEnemies', 'nadirCubePointEnemies',
+    'stardustEnemies', 'dustWispEnemies', 'ribbonWormEnemies', 'lanternMothEnemies',
+    'eyeStalkEnemies', 'jellyfishEnemies', 'eliteJellyfishEnemies', 'clothGhostEnemies',
+    'plantTurretEnemies', 'gearInsectEnemies', 'spiderCrawlerEnemies', 'moteSwarmEnemies',
+    'shadowHandEnemies', 'sandFishEnemies', 'quartzFishEnemies', 'rubyFishEnemies',
+    'sunstoneFishEnemies', 'emeraldFishEnemies', 'sapphireFishEnemies', 'amethystFishEnemies',
+    'diamondFishEnemies',
+  ] as const satisfies readonly EncounterCollectionKey[];
+
+  it('preserves the exact distinct Verdure-resize and overlay-fade memberships', () => {
+    expect(RPG_VERDURE_RESIZE_BODY_KEYS).toEqual(expectedVerdureResizeKeys);
+    expect(RPG_OVERLAY_FADE_BODY_KEYS).toEqual(expectedOverlayFadeKeys);
+    expect(RPG_VERDURE_RESIZE_BODY_KEYS).toHaveLength(39);
+    expect(RPG_OVERLAY_FADE_BODY_KEYS).toHaveLength(42);
+
+    expect(RPG_VERDURE_RESIZE_BODY_KEYS).not.toContain('binaryRingEnemies');
+    expect(RPG_VERDURE_RESIZE_BODY_KEYS).not.toContain('nadirCubePointEnemies');
+    expect(RPG_VERDURE_RESIZE_BODY_KEYS).not.toContain('stardustEnemies');
+    expect(RPG_OVERLAY_FADE_BODY_KEYS).toContain('binaryRingEnemies');
+    expect(RPG_OVERLAY_FADE_BODY_KEYS).toContain('nadirCubePointEnemies');
+    expect(RPG_OVERLAY_FADE_BODY_KEYS).toContain('stardustEnemies');
+  });
+
+  it('uses unique canonical keys and excludes non-body collection families', () => {
+    const canonicalKeys = new Set<EncounterCollectionKey>(RPG_ENCOUNTER_COLLECTION_KEYS);
+    const excludedKeys: EncounterCollectionKey[] = [
+      'spawnQueue', 'sapphireMissiles', 'amberShards', 'quartzSpikes', 'rubyBolts',
+      'citrineBolts', 'amethystShards', 'diamondShards', 'voidTendrils', 'fracterylShards',
+      'eigensteinBeams', 'binaryRingMissiles', 'nadirCubeMines', 'nadirCubeTrailSegments',
+      'nadirCubeTurretBolts', 'nadirCubeLinkLasers', 'horizonPentagonGroups', 'alivenGroups',
+      'lifeColonies', 'plantProjectiles', 'fishMines', 'fishSpikes', 'fishBolts', 'fishDecoys',
+      'bossProjectiles', 'teleportParticles', 'luckyMotes', 'luckyMotePopups', 'hitEffects',
+      'shotLines', 'damageNumbers', 'deathParticles',
+    ];
+
+    for (const profile of [RPG_VERDURE_RESIZE_BODY_KEYS, RPG_OVERLAY_FADE_BODY_KEYS]) {
+      expect(new Set(profile).size).toBe(profile.length);
+      for (const key of profile) expect(canonicalKeys.has(key)).toBe(true);
+      for (const key of excludedKeys) expect(profile).not.toContain(key);
+    }
+  });
+
+  it('offers every Verdure-profile body once with margin 8 and preserves direct mutation', () => {
+    const collections = createRpgEncounterCollections();
+    const seededBodies = new Map<EncounterCollectionKey, { x: number; y: number; vx: number; vy: number }>();
+    for (let i = 0; i < RPG_VERDURE_RESIZE_BODY_KEYS.length; i++) {
+      const key = RPG_VERDURE_RESIZE_BODY_KEYS[i];
+      const body = { x: i, y: i + 1, vx: 2, vy: 3 };
+      seededBodies.set(key, body);
+      collections[key].push(body as never);
+    }
+    collections.binaryRingEnemies.push({ x: 5, y: 5, vx: 4, vy: 4 } as never);
+    const visited: Array<{ body: { x: number; y: number }; margin: number }> = [];
+
+    applyVerdureResizeBodyProfile(collections, (body, margin) => {
+      visited.push({ body, margin });
+      if (body.x === 0) {
+        body.x = 50;
+        body.y = 60;
+        body.vx = 0;
+        body.vy = 0;
+      }
+    });
+
+    expect(visited).toHaveLength(39);
+    expect(visited.every(({ margin }) => margin === 8)).toBe(true);
+    expect(visited.map(({ body }) => body)).toEqual([...seededBodies.values()]);
+    expect(collections.enemies[0]).toMatchObject({ x: 50, y: 60, vx: 0, vy: 0 });
+    expect(collections.sapphireEnemies[0]).toMatchObject({ x: 1, y: 2, vx: 2, vy: 3 });
+    expect(collections.binaryRingEnemies[0]).toMatchObject({ x: 5, y: 5, vx: 4, vy: 4 });
+  });
+});
+
+describe('RPG overlay-fade characterization', () => {
+  const rects = [{ left: 0, top: 0, right: 10, bottom: 10 }];
+  const identityFieldSpace = {
+    worldToScreen: ({ x, y }: { x: number; y: number }) => ({ x, y }),
+  } as RpgFieldSpace;
+
+  it('ignores dead bodies and treats a missing hp field as living', () => {
+    const collections = createRpgEncounterCollections();
+    collections.enemies.push({ x: 5, y: 5, hp: 0 } as never);
+    expect(hasOverlayFadeOverlap(
+      collections,
+      { x: 100, y: 100 },
+      null,
+      identityFieldSpace,
+      rects,
+    )).toBe(false);
+
+    collections.sapphireEnemies.push({ x: 5, y: 5 } as never);
+    expect(hasOverlayFadeOverlap(
+      collections,
+      { x: 100, y: 100 },
+      null,
+      identityFieldSpace,
+      rects,
+    )).toBe(true);
+  });
+
+  it('preserves separate player and living-boss overlap with boss padding 18', () => {
+    const collections = createRpgEncounterCollections();
+    expect(hasOverlayFadeOverlap(
+      collections,
+      { x: 5, y: 5 },
+      null,
+      identityFieldSpace,
+      rects,
+    )).toBe(true);
+
+    expect(hasOverlayFadeOverlap(
+      collections,
+      { x: 100, y: 100 },
+      { x: 28, y: 28, hp: 1 },
+      identityFieldSpace,
+      rects,
+    )).toBe(true);
+    expect(hasOverlayFadeOverlap(
+      collections,
+      { x: 100, y: 100 },
+      { x: 28, y: 28, hp: 0 },
+      identityFieldSpace,
+      rects,
+    )).toBe(false);
+  });
+
+  it('short-circuits after the first living body overlap in profile order', () => {
+    const collections = createRpgEncounterCollections();
+    collections.enemies.push({ x: 5, y: 5, hp: 1 } as never);
+    collections.sapphireEnemies.push({ x: 5, y: 5, hp: 1 } as never);
+    let projectionCount = 0;
+    const countingFieldSpace = {
+      worldToScreen: ({ x, y }: { x: number; y: number }) => {
+        projectionCount++;
+        return { x, y };
+      },
+    } as RpgFieldSpace;
+
+    expect(hasOverlayFadeOverlap(
+      collections,
+      { x: 100, y: 100 },
+      null,
+      countingFieldSpace,
+      rects,
+    )).toBe(true);
+    expect(projectionCount).toBe(2);
+  });
+
+  it('preserves the 0.16 interpolation factor and 0.30 overlap floor', () => {
+    expect(stepOverlayFadeAlpha(1, true)).toBeCloseTo(0.888);
+    expect(stepOverlayFadeAlpha(0.3, true)).toBeCloseTo(0.3);
+    expect(stepOverlayFadeAlpha(0, false)).toBeCloseTo(0.16);
   });
 });
 

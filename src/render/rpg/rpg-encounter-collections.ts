@@ -165,6 +165,37 @@ export interface RpgEncounterCollections {
   deathParticles: DeathParticle[];
 }
 
+export interface RpgVerdureResizeBody {
+  x: number;
+  y: number;
+  vx?: number;
+  vy?: number;
+}
+
+export interface RpgOverlayFadeBody {
+  x: number;
+  y: number;
+  hp?: number;
+}
+
+export interface RpgOverlayFadeRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface RpgOverlayFadeProjection {
+  worldToScreen(point: { x: number; y: number }): { x: number; y: number };
+}
+
+type EncounterCollectionElement<Key extends keyof RpgEncounterCollections> =
+  RpgEncounterCollections[Key][number];
+
+type EncounterCollectionKeyFor<Body> = {
+  [Key in keyof RpgEncounterCollections]: EncounterCollectionElement<Key> extends Body ? Key : never;
+}[keyof RpgEncounterCollections];
+
 export const RPG_ENCOUNTER_COLLECTION_KEYS = [
   'spawnQueue',
   'enemies', 'sapphireEnemies', 'sapphireMissiles', 'emeraldEnemies',
@@ -187,6 +218,104 @@ export const RPG_ENCOUNTER_COLLECTION_KEYS = [
   'bossProjectiles', 'teleportParticles', 'luckyMotes', 'luckyMotePopups',
   'hitEffects', 'shotLines', 'damageNumbers', 'deathParticles',
 ] as const satisfies readonly (keyof RpgEncounterCollections)[];
+
+export const RPG_VERDURE_RESIZE_BODY_KEYS = [
+  'enemies', 'sapphireEnemies', 'emeraldEnemies', 'amberEnemies', 'voidEnemies',
+  'quartzEnemies', 'rubyEnemies', 'sunstoneEnemies', 'citrineEnemies', 'ioliteEnemies',
+  'amethystEnemies', 'diamondEnemies', 'nullstoneEnemies', 'fracterylEnemies',
+  'eigensteinEnemies', 'eliteEnemies', 'polyominoEnemies', 'fissilePolyominoEnemies',
+  'refractorPolyominoEnemies', 'dustWispEnemies', 'ribbonWormEnemies',
+  'lanternMothEnemies', 'eyeStalkEnemies', 'jellyfishEnemies', 'eliteJellyfishEnemies',
+  'clothGhostEnemies', 'plantTurretEnemies', 'gearInsectEnemies', 'spiderCrawlerEnemies',
+  'moteSwarmEnemies', 'shadowHandEnemies', 'sandFishEnemies', 'quartzFishEnemies',
+  'rubyFishEnemies', 'sunstoneFishEnemies', 'emeraldFishEnemies', 'sapphireFishEnemies',
+  'amethystFishEnemies', 'diamondFishEnemies',
+] as const satisfies readonly EncounterCollectionKeyFor<RpgVerdureResizeBody>[];
+
+export const RPG_OVERLAY_FADE_BODY_KEYS = [
+  'enemies', 'sapphireEnemies', 'emeraldEnemies', 'amberEnemies', 'voidEnemies',
+  'quartzEnemies', 'rubyEnemies', 'sunstoneEnemies', 'citrineEnemies', 'ioliteEnemies',
+  'amethystEnemies', 'diamondEnemies', 'nullstoneEnemies', 'fracterylEnemies',
+  'eigensteinEnemies', 'eliteEnemies', 'polyominoEnemies', 'fissilePolyominoEnemies',
+  'refractorPolyominoEnemies', 'binaryRingEnemies', 'nadirCubePointEnemies',
+  'stardustEnemies', 'dustWispEnemies', 'ribbonWormEnemies', 'lanternMothEnemies',
+  'eyeStalkEnemies', 'jellyfishEnemies', 'eliteJellyfishEnemies', 'clothGhostEnemies',
+  'plantTurretEnemies', 'gearInsectEnemies', 'spiderCrawlerEnemies', 'moteSwarmEnemies',
+  'shadowHandEnemies', 'sandFishEnemies', 'quartzFishEnemies', 'rubyFishEnemies',
+  'sunstoneFishEnemies', 'emeraldFishEnemies', 'sapphireFishEnemies', 'amethystFishEnemies',
+  'diamondFishEnemies',
+] as const satisfies readonly EncounterCollectionKeyFor<RpgOverlayFadeBody>[];
+
+export type RpgVerdureResizeBodyKey = typeof RPG_VERDURE_RESIZE_BODY_KEYS[number];
+export type RpgOverlayFadeBodyKey = typeof RPG_OVERLAY_FADE_BODY_KEYS[number];
+
+export function getVerdureResizeBodies(
+  collections: RpgEncounterCollections,
+  key: RpgVerdureResizeBodyKey,
+): readonly RpgVerdureResizeBody[] {
+  return collections[key];
+}
+
+export function applyVerdureResizeBodyProfile(
+  collections: RpgEncounterCollections,
+  applyBodyCorrection: (body: RpgVerdureResizeBody, margin: number) => void,
+): void {
+  for (const key of RPG_VERDURE_RESIZE_BODY_KEYS) {
+    const bodies = getVerdureResizeBodies(collections, key);
+    for (let i = 0; i < bodies.length; i++) applyBodyCorrection(bodies[i], 8);
+  }
+}
+
+export function getOverlayFadeBodies(
+  collections: RpgEncounterCollections,
+  key: RpgOverlayFadeBodyKey,
+): readonly RpgOverlayFadeBody[] {
+  return collections[key];
+}
+
+function worldPointOverlapsOverlayRects(
+  projection: RpgOverlayFadeProjection,
+  xWorld: number,
+  yWorld: number,
+  rects: readonly RpgOverlayFadeRect[],
+  padPx = 10,
+): boolean {
+  const screen = projection.worldToScreen({ x: xWorld, y: yWorld });
+  for (const rect of rects) {
+    if (
+      screen.x >= rect.left - padPx && screen.x <= rect.right + padPx
+      && screen.y >= rect.top - padPx && screen.y <= rect.bottom + padPx
+    ) return true;
+  }
+  return false;
+}
+
+export function hasOverlayFadeOverlap(
+  collections: RpgEncounterCollections,
+  mote: { x: number; y: number },
+  bossEnemy: { x: number; y: number; hp: number } | null,
+  projection: RpgOverlayFadeProjection,
+  rects: readonly RpgOverlayFadeRect[],
+): boolean {
+  if (worldPointOverlapsOverlayRects(projection, mote.x, mote.y, rects)) return true;
+
+  for (const key of RPG_OVERLAY_FADE_BODY_KEYS) {
+    const bodies = getOverlayFadeBodies(collections, key);
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+      if ((body.hp ?? 1) <= 0) continue;
+      if (worldPointOverlapsOverlayRects(projection, body.x, body.y, rects)) return true;
+    }
+  }
+
+  return bossEnemy !== null && bossEnemy.hp > 0
+    && worldPointOverlapsOverlayRects(projection, bossEnemy.x, bossEnemy.y, rects, 18);
+}
+
+export function stepOverlayFadeAlpha(currentAlpha: number, anyOverlap: boolean): number {
+  const targetAlpha = anyOverlap ? 0.30 : 1.0;
+  return currentAlpha + (targetAlpha - currentAlpha) * 0.16;
+}
 
 const COMMON_RESET_KEYS = [
   'spawnQueue',

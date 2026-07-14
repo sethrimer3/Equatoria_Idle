@@ -181,7 +181,11 @@ import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
 import { drawEmpowerParticles } from './rpg-elite-empower-particles';
 import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
-import type { RpgEncounterCollections } from './rpg-encounter-collections';
+import {
+  hasOverlayFadeOverlap,
+  stepOverlayFadeAlpha,
+  type RpgEncounterCollections,
+} from './rpg-encounter-collections';
 import { renderEnemyStatusLabels } from './enemy-status-render';
 import { drawTargetNamePopup } from './rpg-target-popup';
 
@@ -433,69 +437,17 @@ export function createRpgDrawFrameState(): RpgDrawFrameState {
   return { waveOverlapAlpha: 1.0, overlayFadeAlpha: 1.0, codexNotificationStartedMs: 0, zoneSelectionSpriteHovered: false };
 }
 
-function pointOverlapsRect(
-  x: number,
-  y: number,
-  rect: { left: number; top: number; right: number; bottom: number },
-  padPx: number,
-): boolean {
-  return x >= rect.left - padPx && x <= rect.right + padPx && y >= rect.top - padPx && y <= rect.bottom + padPx;
-}
-
-function isWorldPointOverAnyOverlayRect(
-  fs: RpgFieldSpace,
-  xWorld: number,
-  yWorld: number,
-  rects: readonly { left: number; top: number; right: number; bottom: number }[],
-  padPx = 10,
-): boolean {
-  const screen = fs.worldToScreen({ x: xWorld, y: yWorld });
-  for (const rect of rects) {
-    if (pointOverlapsRect(screen.x, screen.y, rect, padPx)) return true;
-  }
-  return false;
-}
-
 function updateOverlayFadeAlpha(ctx: RpgDrawCtx, state: RpgDrawFrameState, fs: RpgFieldSpace): void {
   const rects = ctx.getOverlayFadeRects?.() ?? [];
   if (rects.length === 0) {
-    state.overlayFadeAlpha += (1 - state.overlayFadeAlpha) * 0.16;
+    state.overlayFadeAlpha = stepOverlayFadeAlpha(state.overlayFadeAlpha, false);
     ctx.setOverlayFadeAlpha?.(state.overlayFadeAlpha);
     return;
   }
 
-  let anyOverlap = isWorldPointOverAnyOverlayRect(fs, ctx.mote.x, ctx.mote.y, rects);
-  const enemyArrays: ReadonlyArray<ReadonlyArray<{ x: number; y: number; hp?: number }>> = [
-    ctx.enemies, ctx.sapphireEnemies, ctx.emeraldEnemies, ctx.amberEnemies, ctx.voidEnemies,
-    ctx.quartzEnemies, ctx.rubyEnemies, ctx.sunstoneEnemies, ctx.citrineEnemies, ctx.ioliteEnemies,
-    ctx.amethystEnemies, ctx.diamondEnemies, ctx.nullstoneEnemies, ctx.fracterylEnemies,
-    ctx.eigensteinEnemies, ctx.eliteEnemies, ctx.polyominoEnemies, ctx.fissilePolyominoEnemies,
-    ctx.refractorPolyominoEnemies, ctx.binaryRingEnemies, ctx.nadirCubePointEnemies,
-    ctx.stardustEnemies, ctx.dustWispEnemies, ctx.ribbonWormEnemies, ctx.lanternMothEnemies,
-    ctx.eyeStalkEnemies, ctx.jellyfishEnemies, ctx.eliteJellyfishEnemies, ctx.clothGhostEnemies,
-    ctx.plantTurretEnemies, ctx.gearInsectEnemies, ctx.spiderCrawlerEnemies, ctx.moteSwarmEnemies,
-    ctx.shadowHandEnemies, ctx.sandFishEnemies, ctx.quartzFishEnemies, ctx.rubyFishEnemies,
-    ctx.sunstoneFishEnemies, ctx.emeraldFishEnemies, ctx.sapphireFishEnemies, ctx.amethystFishEnemies,
-    ctx.diamondFishEnemies,
-  ];
-  for (let i = 0; !anyOverlap && i < enemyArrays.length; i++) {
-    const enemies = enemyArrays[i];
-    for (let j = 0; j < enemies.length; j++) {
-      const enemy = enemies[j];
-      if ((enemy.hp ?? 1) <= 0) continue;
-      if (isWorldPointOverAnyOverlayRect(fs, enemy.x, enemy.y, rects)) {
-        anyOverlap = true;
-        break;
-      }
-    }
-  }
   const bossEnemy = ctx.getBossEnemy();
-  if (!anyOverlap && bossEnemy && bossEnemy.hp > 0) {
-    anyOverlap = isWorldPointOverAnyOverlayRect(fs, bossEnemy.x, bossEnemy.y, rects, 18);
-  }
-
-  const targetAlpha = anyOverlap ? 0.30 : 1.0;
-  state.overlayFadeAlpha += (targetAlpha - state.overlayFadeAlpha) * 0.16;
+  const anyOverlap = hasOverlayFadeOverlap(ctx.collections, ctx.mote, bossEnemy, fs, rects);
+  state.overlayFadeAlpha = stepOverlayFadeAlpha(state.overlayFadeAlpha, anyOverlap);
   ctx.setOverlayFadeAlpha?.(state.overlayFadeAlpha);
 }
 
