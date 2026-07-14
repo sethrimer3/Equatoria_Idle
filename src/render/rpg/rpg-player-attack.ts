@@ -29,14 +29,15 @@ import type {
   CitrineEnemy, CitrineBolt, IoliteEnemy,
   AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril, FracterylEnemy, FracterylShard,
-  EigensteinEnemy, BossEnemy, EliteEnemy, StardustEnemy,
+  EigensteinEnemy, BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { ClosestTarget } from './rpg-types';
-import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
+import type { RpgEncounterCollections } from './rpg-encounter-collections';
+import { hasAttackDispatchTarget } from './rpg-player-attack-readiness';
 import { performAoeAttack } from './rpg-player-attack-aoe';
 import { performMultiAttack } from './rpg-player-attack-multi';
 import { performSingleAttack } from './rpg-player-attack-single';
@@ -49,7 +50,9 @@ import { resolveCritLayers } from '../../data/rpg/weave-math-helpers';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
-export interface RpgPlayerAttackCtx {
+export interface RpgPlayerAttackCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
+
   // Player mote (live reference)
   mote: { x: number; y: number };
 
@@ -60,62 +63,7 @@ export interface RpgPlayerAttackCtx {
   rpgSimState: RpgSimState;
   playerStats: RpgPlayerStats;
 
-  // All enemy arrays (live references)
-  enemies: LaserEnemy[];
-  sapphireEnemies: SapphireEnemy[];
-  sapphireMissiles: SapphireMissile[];
-  emeraldEnemies: EmeraldEnemy[];
-  amberEnemies: AmberEnemy[];
-  amberShards: AmberShard[];
-  voidEnemies: VoidEnemy[];
-  quartzEnemies: QuartzEnemy[];
-  quartzSpikes: QuartzSpike[];
-  rubyEnemies: RubyEnemy[];
-  rubyBolts: RubyBolt[];
-  sunstoneEnemies: SunstoneEnemy[];
-  citrineEnemies: CitrineEnemy[];
-  citrineBolts: CitrineBolt[];
-  ioliteEnemies: IoliteEnemy[];
-  amethystEnemies: AmethystEnemy[];
-  amethystShards: AmethystShard[];
-  diamondEnemies: DiamondEnemy[];
-  diamondShards: DiamondShard[];
-  nullstoneEnemies: NullstoneEnemy[];
-  voidTendrils: VoidTendril[];
-  fracterylEnemies: FracterylEnemy[];
-  fracterylShards: FracterylShard[];
-  eigensteinEnemies: EigensteinEnemy[];
-  polyominoEnemies: PolyominoEnemy[];
-  fissilePolyominoEnemies: FissilePolyominoEnemy[];
-  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
-  eliteEnemies: EliteEnemy[];
-  binaryRingEnemies: BinaryRingEnemy[];
-  stardustEnemies: StardustEnemy[];
-  alivenGroups: AlivenParticleGroup[];
-  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
-  dustWispEnemies: import('./rpg-procedural-types').DustWispEnemy[];
-  ribbonWormEnemies: import('./rpg-procedural-types').RibbonWormEnemy[];
-  lanternMothEnemies: import('./rpg-procedural-types').LanternMothEnemy[];
-  eyeStalkEnemies: import('./rpg-procedural-types').EyeStalkEnemy[];
-  jellyfishEnemies: import('./rpg-procedural-types').JellyfishEnemy[];
-  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
-  clothGhostEnemies: import('./rpg-procedural-types').ClothGhostEnemy[];
-  plantTurretEnemies: import('./rpg-procedural-types').PlantTurretEnemy[];
-  gearInsectEnemies: import('./rpg-procedural-types').GearInsectEnemy[];
-  spiderCrawlerEnemies: import('./rpg-procedural-types').SpiderCrawlerEnemy[];
-  moteSwarmEnemies: import('./rpg-procedural-types').MoteSwarmEnemy[];
-  shadowHandEnemies: import('./rpg-procedural-types').ShadowHandEnemy[];
-  sandFishEnemies: import('./rpg-procedural-types').SandFishEnemy[];
-  quartzFishEnemies: import('./rpg-procedural-types').QuartzFishEnemy[];
-  rubyFishEnemies: import('./rpg-procedural-types').RubyFishEnemy[];
-  sunstoneFishEnemies: import('./rpg-procedural-types').SunstoneFishEnemy[];
-  emeraldFishEnemies: import('./rpg-procedural-types').EmeraldFishEnemy[];
-  sapphireFishEnemies: import('./rpg-procedural-types').SapphireFishEnemy[];
-  amethystFishEnemies: import('./rpg-procedural-types').AmethystFishEnemy[];
-  diamondFishEnemies: import('./rpg-procedural-types').DiamondFishEnemy[];
-  plantProjectiles: import('./rpg-procedural-types').PlantProjectile[];
-
   // Per-enemy damage functions
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
@@ -246,46 +194,8 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     return;
   }
 
-  // Skip if no enemies present.
-  const { enemies, sapphireEnemies, sapphireMissiles,
-    emeraldEnemies, amberEnemies, amberShards, voidEnemies,
-    quartzEnemies, quartzSpikes, rubyEnemies, rubyBolts,
-    sunstoneEnemies, citrineEnemies, citrineBolts,
-    ioliteEnemies, amethystEnemies, amethystShards,
-    diamondEnemies, diamondShards, nullstoneEnemies, voidTendrils,
-    fracterylEnemies, fracterylShards, eigensteinEnemies,
-    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    eliteEnemies, binaryRingEnemies, alivenGroups,
-    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles,
-  } = ctx;
-  let alivenParticleCount = 0;
-  for (const g of alivenGroups) {
-    for (const p of g.particles) { if (p.isAlive) alivenParticleCount++; }
-  }
-  const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length
-    + emeraldEnemies.length + amberEnemies.length + amberShards.length + voidEnemies.length
-    + quartzEnemies.length + quartzSpikes.length + rubyEnemies.length + rubyBolts.length
-    + sunstoneEnemies.length + citrineEnemies.length + citrineBolts.length
-    + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
-    + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length
-    + fracterylEnemies.length + fracterylShards.length + eigensteinEnemies.length
-    + polyominoEnemies.length + fissilePolyominoEnemies.length + refractorPolyominoEnemies.length
-    + eliteEnemies.length + binaryRingEnemies.length + alivenParticleCount
-    + dustWispEnemies.length + ribbonWormEnemies.length + lanternMothEnemies.length
-    + eyeStalkEnemies.length + jellyfishEnemies.length + eliteJellyfishEnemies.length + clothGhostEnemies.length
-    + plantTurretEnemies.length + gearInsectEnemies.length + spiderCrawlerEnemies.length
-    + moteSwarmEnemies.length + shadowHandEnemies.length
-    + sandFishEnemies.length + quartzFishEnemies.length + rubyFishEnemies.length
-    + sunstoneFishEnemies.length + emeraldFishEnemies.length + sapphireFishEnemies.length
-    + amethystFishEnemies.length + diamondFishEnemies.length + plantProjectiles.length
-    + ctx.horizonPentagonGroups.length
-    + (bossEnemy ? 1 : 0);
-  if (totalTargets === 0) return;
+  // Skip if no currently participating target family is present.
+  if (!hasAttackDispatchTarget(ctx.collections, bossEnemy)) return;
 
   const range     = (weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX) * Math.max(1, ctx.getWeaponRngMultiplier(weaponId));
   const tier      = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;

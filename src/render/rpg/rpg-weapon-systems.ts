@@ -28,7 +28,7 @@ import type {
   LaserBeamEffect, NullstoneVortex, VortexWeaponState,
   SwordComboState,
   IolitePoisonBolt,
-  LaserEnemy, SapphireEnemy, SapphireMissile, HitEffect,
+  LaserEnemy, SapphireEnemy, SapphireMissile,
 } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, AmberShard,
@@ -37,13 +37,12 @@ import type {
   IoliteEnemy, AmethystEnemy, AmethystShard,
   DiamondEnemy, DiamondShard, NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard, EigensteinEnemy,
-  BossEnemy, EliteEnemy, StardustEnemy,
+  BossEnemy, EliteEnemy,
   EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
   SunstoneMine,
   SapphireShip, SapphireLaser,
   AmethystShip, AmethystLaser,
 } from './rpg-enemy-types';
-import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { ClosestTarget } from './rpg-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type {
@@ -62,10 +61,13 @@ import { createEmeraldWeaponSystem } from './rpg-weapon-emerald';
 import { createLaserBeamWeaponSystem } from './rpg-weapon-laser-beam';
 import { createFracterylSpearSystem } from './rpg-weapon-fracteryl-spear';
 import type { FracterylSpear, FracterylBloom } from './rpg-weapon-fracteryl-spear';
+import type { RpgEncounterCollections } from './rpg-encounter-collections';
 
 // ── Dependency-injection context passed in from rpg-render.ts ─────────────
 
-export interface RpgWeaponCtx {
+export interface RpgWeaponCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
+
   // Viewport dimensions (updated on resize) — safe core (360×640)
   dim: { w: number; h: number };
   /** Full visible world-space bounds — updated on every resize. */
@@ -83,65 +85,7 @@ export interface RpgWeaponCtx {
   rpgSimState: RpgSimState;
 
   // Enemy arrays (live references — mutations via damage functions, removals via removeDeadEnemies)
-  enemies: LaserEnemy[];
-  sapphireEnemies: SapphireEnemy[];
-  sapphireMissiles: SapphireMissile[];
-  emeraldEnemies: EmeraldEnemy[];
-  amberEnemies: AmberEnemy[];
-  amberShards: AmberShard[];
-  voidEnemies: VoidEnemy[];
-  quartzEnemies: QuartzEnemy[];
-  quartzSpikes: QuartzSpike[];
-  rubyEnemies: RubyEnemy[];
-  rubyBolts: RubyBolt[];
-  sunstoneEnemies: SunstoneEnemy[];
-  citrineEnemies: CitrineEnemy[];
-  citrineBolts: CitrineBolt[];
-  ioliteEnemies: IoliteEnemy[];
-  amethystEnemies: AmethystEnemy[];
-  amethystShards: AmethystShard[];
-  diamondEnemies: DiamondEnemy[];
-  diamondShards: DiamondShard[];
-  nullstoneEnemies: NullstoneEnemy[];
-  voidTendrils: VoidTendril[];
-  fracterylEnemies: FracterylEnemy[];
-  fracterylShards: FracterylShard[];
-  eigensteinEnemies: EigensteinEnemy[];
-  polyominoEnemies: PolyominoEnemy[];
-  fissilePolyominoEnemies: FissilePolyominoEnemy[];
-  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
-  eliteEnemies: EliteEnemy[];
-  binaryRingEnemies: BinaryRingEnemy[];
-  stardustEnemies: StardustEnemy[];
-  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
-  alivenGroups: AlivenParticleGroup[];
-  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
-  dustWispEnemies: import('./rpg-procedural-types').DustWispEnemy[];
-  ribbonWormEnemies: import('./rpg-procedural-types').RibbonWormEnemy[];
-  lanternMothEnemies: import('./rpg-procedural-types').LanternMothEnemy[];
-  eyeStalkEnemies: import('./rpg-procedural-types').EyeStalkEnemy[];
-  jellyfishEnemies: import('./rpg-procedural-types').JellyfishEnemy[];
-  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
-  clothGhostEnemies: import('./rpg-procedural-types').ClothGhostEnemy[];
-  plantTurretEnemies: import('./rpg-procedural-types').PlantTurretEnemy[];
-  gearInsectEnemies: import('./rpg-procedural-types').GearInsectEnemy[];
-  spiderCrawlerEnemies: import('./rpg-procedural-types').SpiderCrawlerEnemy[];
-  moteSwarmEnemies: import('./rpg-procedural-types').MoteSwarmEnemy[];
-  shadowHandEnemies: import('./rpg-procedural-types').ShadowHandEnemy[];
-  sandFishEnemies: import('./rpg-procedural-types').SandFishEnemy[];
-  quartzFishEnemies: import('./rpg-procedural-types').QuartzFishEnemy[];
-  rubyFishEnemies: import('./rpg-procedural-types').RubyFishEnemy[];
-  sunstoneFishEnemies: import('./rpg-procedural-types').SunstoneFishEnemy[];
-  emeraldFishEnemies: import('./rpg-procedural-types').EmeraldFishEnemy[];
-  sapphireFishEnemies: import('./rpg-procedural-types').SapphireFishEnemy[];
-  amethystFishEnemies: import('./rpg-procedural-types').AmethystFishEnemy[];
-  diamondFishEnemies: import('./rpg-procedural-types').DiamondFishEnemy[];
-  plantProjectiles: import('./rpg-procedural-types').PlantProjectile[];
-
-  // Hit effects array (weapon functions push directly into this array)
-  hitEffects: HitEffect[];
-
   // Per-enemy damage functions (from createDamageFns)
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;

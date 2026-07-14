@@ -1703,7 +1703,7 @@ deferred DOM rectangle buffer or other body inventories.
 **Baseline build:** `334`
 **Baseline commit:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
 **Baseline working tree:** Clean; `main` matched `origin/main`
-**Status:** Planned only; do not implement during the planning run
+**Status:** Implementation in progress
 
 ### Decision
 
@@ -2056,3 +2056,22 @@ planning.
 > all repository and phase instructions, add characterization tests first, preserve exact current
 > readiness membership and attack behavior, update the plan throughout, validate fully, commit and
 > push, and stop after Phase Five.
+
+### Implementation Work Log
+
+#### 2026-07-13 — Baseline and current-source inventory
+
+- Confirmed `main` at `bc7e846101ff875e87eacf871ba0fd7f6ffa987d`, matching `origin/main`
+  (ahead 0, behind 0), with a clean working tree and no commits after the planning commit.
+- Confirmed the authoritative baseline remains Build 334.
+- Baseline validation passed: typecheck (exit 0), lint (exit 0), 73 test files / 1487 tests
+  (exit 0 on the approved rerun), web build (exit 0; 441 modules), and desktop build (exit 0;
+  441 modules). The restricted first test attempt failed before config load because esbuild could
+  not read parent directories; the rerun passed. Existing Boss MIDI invalid-URL test stderr and
+  Vite's existing chunk-size warning remain unchanged.
+- Re-inventory confirmed the planned current-source counts: 74 canonical encounter collections;
+  52 readiness-participating collection keys (50 inline direct-length terms, Horizon as the
+  separately authored direct-length term, and ALIVEN with nested living-particle semantics); and
+  22 explicit exclusions. The two renderer construction sites still manually wire their
+  collection aliases.
+- No production file has been changed. Characterization tests are the next step.
