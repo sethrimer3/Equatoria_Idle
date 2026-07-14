@@ -33,6 +33,9 @@ export interface BuffableEnemy {
   maxHp: number;
   atk: number;
   def: number;
+  /** Present only on shield-bearing enemy types (SapphireEnemy, AmethystEnemy, etc.). */
+  shieldHp?: number;
+  maxShieldHp?: number;
 }
 
 /** Base stat values captured at the moment of spawn (before any buff). */
@@ -56,12 +59,11 @@ let _baseStats = new WeakMap<object, BaseStats>();
  * Must be called before any call to `applyBuffToEnemy` for this enemy.
  */
 export function registerNonEliteEnemy(enemy: BuffableEnemy): void {
-  const s = enemy as { maxShieldHp?: number };
   _baseStats.set(enemy, {
     maxHp: enemy.maxHp,
     atk: enemy.atk,
     def: enemy.def,
-    maxShieldHp: s.maxShieldHp,
+    maxShieldHp: enemy.maxShieldHp,
   });
 }
 
@@ -89,10 +91,11 @@ export function applyBuffToEnemy(enemy: BuffableEnemy, eliteCount: number): void
 
   // Shield (SapphireEnemy, AmethystEnemy) — preserve shield HP percentage
   if (base.maxShieldHp !== undefined && base.maxShieldHp > 0) {
-    const se = enemy as unknown as { shieldHp: number; maxShieldHp: number };
-    const shieldPct = se.maxShieldHp > 0 ? Math.min(1, se.shieldHp / se.maxShieldHp) : 1;
-    se.maxShieldHp = Math.max(1, Math.ceil(base.maxShieldHp * mult));
-    se.shieldHp    = Math.max(0, Math.round(shieldPct * se.maxShieldHp));
+    const curMaxShieldHp = enemy.maxShieldHp ?? 0;
+    const curShieldHp = enemy.shieldHp ?? 0;
+    const shieldPct = curMaxShieldHp > 0 ? Math.min(1, curShieldHp / curMaxShieldHp) : 1;
+    enemy.maxShieldHp = Math.max(1, Math.ceil(base.maxShieldHp * mult));
+    enemy.shieldHp    = Math.max(0, Math.round(shieldPct * enemy.maxShieldHp));
   }
 }
 

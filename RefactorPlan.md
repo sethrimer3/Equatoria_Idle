@@ -3772,3 +3772,127 @@ classification, and why it is isolated from the deferred/rejected items already 
 - Commit hash and push result: recorded after commit below.
 
 ---
+
+## Phase 11 — `BuffableEnemy` shield-field typing (`rpg-elite-buff.ts`)
+
+### Audit (this session)
+
+Re-swept `src/` for `Object.entries/values/keys` over typed production objects, `as unknown as`
+casts outside dev/test files, independently maintained parallel rosters, and hot-loop per-call
+allocations. Findings:
+
+- `src/render/rpg/rpg-boss-attack-config.ts:63` — `beatConfig as unknown as Record<string, unknown>`.
+  Deliberate structural probe to reject legacy `cooldownMs`/`durationMs` fields that must not exist
+  on the authored type; the cast is the only way to check for excess properties TS doesn't otherwise
+  let you query. Load-bearing, not a candidate.
+- `src/render/rpg/rpg-render.ts:1114` — `t as unknown as { x; y; hp; maxHp }` narrowing a large enemy
+  union to the bark system's minimal shape. Already has an inline comment justifying it (every union
+  member has these fields structurally, but the union is too wide for a direct `as` without
+  `unknown`). Cold path (called once per bark check), already documented. Not a candidate.
+- `src/render/rpg/rpg-encounter-collections.ts:505` — `bossEnemy as unknown as object` inside
+  `findDevStatusComboNearestTarget`, a dev-tool-only function. Cold, dev-only. Not a candidate.
+- `src/render/rpg/rpg-elite-buff.ts:92` (and the related cast at line 59) — **candidate, selected.**
+  `BuffableEnemy` (the interface `applyBuffToEnemy`/`registerNonEliteEnemy` are typed against) omits
+  the optional `shieldHp`/`maxShieldHp: number` fields that shield-bearing enemy types (Sapphire,
+  Amethyst, Quartzfish) actually carry (confirmed against `rpg-enemy-types.ts`, `rpg-types.ts`,
+  `rpg-procedural-types.ts`, `rpg-factories-*.ts`). Two casts exist solely to reach those fields:
+  `enemy as { maxShieldHp?: number }` (line 59) and `enemy as unknown as { shieldHp: number;
+  maxShieldHp: number }` (line 92). Both are eliminable by widening `BuffableEnemy` itself with the
+  same two fields as optional — every existing caller already satisfies the wider interface
+  structurally (verified against all `_getNonEliteArrays` call sites in `rpg-enemy-spawn.ts` and
+  `rpg-wave-dead-enemies-special.ts`), so no call site needs to change.
+  - `rpg-enemy-spawn.ts` / `rpg-wave-dead-enemies-special.ts` — these files contain ~44
+    `ctx.<array> as ReadonlyArray<BuffableEnemy>` casts each, one per concrete enemy array. Reviewed
+    and excluded from this phase: converting them requires proving each concrete enemy type is
+    structurally assignable without narrowing (some are optional/differently-shaped across ~30 enemy
+    kinds), which is a large, cross-file undertaking disproportionate to a single bounded phase, and
+    orthogonal to the shield-field gap being fixed here.
+
+### Decision: proceed with Phase 11 (narrow scope)
+
+Widen `BuffableEnemy` to include optional `shieldHp?: number` and `maxShieldHp?: number`, removing
+the two casts in `rpg-elite-buff.ts` that exist only to read/write those fields. This is the same
+class of fix as prior phases (unsafe cast → correct structural type), isolated to one file, with a
+clear behavioral-preservation contract (the runtime logic in `applyBuffToEnemy` is unchanged — only
+the type annotations change, so no cast is needed to reach fields that are now part of the declared
+type).
+
+### Motivation
+
+`registerNonEliteEnemy`/`applyBuffToEnemy` already handle shield stats correctly at runtime (guarded
+by `base.maxShieldHp !== undefined`), but the *type* they operate on (`BuffableEnemy`) doesn't
+declare those fields, forcing two casts to bridge the gap. This is exactly the "structural type
+doesn't match what the code actually needs" pattern this series has targeted since Phase 6-9.
+
+### Scope
+
+- `src/render/rpg/rpg-elite-buff.ts` only. No other file needs to change: `BuffableEnemy` is
+  structurally widened (optional fields added), and every existing concrete enemy type used as a
+  `BuffableEnemy` already has `shieldHp`/`maxShieldHp: number` (when shield-bearing) or lacks them
+  entirely (when not), both of which satisfy `shieldHp?: number`.
+
+### Behavioral contract
+
+- `applyBuffToEnemy`'s shield-scaling branch (`if (base.maxShieldHp !== undefined && base.maxShieldHp
+  > 0)`) must produce byte-identical `maxShieldHp`/`shieldHp` results before and after.
+- `registerNonEliteEnemy` must continue to record `maxShieldHp: undefined` for non-shield enemies and
+  the correct numeric value for shield-bearing ones.
+- Non-shield stat scaling (`maxHp`, `hp`, `atk`, `def`) is untouched by this phase.
+
+### Test plan
+
+No test file currently exists for `rpg-elite-buff.ts`. Add
+`src/render/rpg/rpg-elite-buff.test.ts` with characterization tests run first against the
+*current* (pre-fix) implementation to confirm they pass unmodified, then again after the fix:
+
+1. `registerNonEliteEnemy` + `applyBuffToEnemy` on a non-shield enemy (`maxShieldHp` absent) —
+   `maxHp`/`atk`/`def` scale by `1 + eliteCount * ELITE_BUFF_PER_ELITE`; no `shieldHp` field appears.
+2. Same on a shield-bearing enemy — `maxShieldHp`/`shieldHp` scale by the same multiplier, with HP%
+   and shield% preserved across the recalc (mirrors the doc comment's contract).
+3. Idempotency: calling `applyBuffToEnemy` twice with the same `eliteCount` produces identical output
+   (no compounding).
+4. `recalcAllNonEliteBuffs` across mixed shield/non-shield arrays.
+
+### Explicit exclusions
+
+- The ~44-cast-per-file `ReadonlyArray<BuffableEnemy>` pattern in `rpg-enemy-spawn.ts` and
+  `rpg-wave-dead-enemies-special.ts` is out of scope (see audit note above).
+- `rpg-boss-attack-config.ts:63`, `rpg-render.ts:1114`, `rpg-encounter-collections.ts:505` — reviewed
+  and rejected as load-bearing/cold/already-documented (see audit above).
+- No new `Object.entries/values/keys` or parallel-roster findings this session.
+
+### Change made in this session
+
+- `src/render/rpg/rpg-elite-buff.ts` — widened `BuffableEnemy` with optional `shieldHp?: number` and
+  `maxShieldHp?: number`, removing both casts (`enemy as { maxShieldHp?: number }` in
+  `registerNonEliteEnemy`, `enemy as unknown as { shieldHp: number; maxShieldHp: number }` in
+  `applyBuffToEnemy`). The shield-scaling branch now reads/writes `enemy.shieldHp`/
+  `enemy.maxShieldHp` directly (via local `?? 0` defaults for the percentage calculation, since the
+  fields are optional on the type) instead of through a cast. Runtime logic and output are unchanged.
+- Added `src/render/rpg/rpg-elite-buff.test.ts` — 6 characterization tests (non-shield scaling,
+  HP%-preservation, shield scaling + shield%-preservation, idempotency, mixed-array
+  `recalcAllNonEliteBuffs`, no-op for unregistered enemies). All 6 ran and passed against the
+  pre-fix implementation first, then again after the fix.
+- `src/buildInfo.ts` — `BUILD_NUMBER` 340 → 341.
+
+### Validation Results
+
+| Command | Exit | Result |
+|---|---:|---|
+| `npm run typecheck` | 0 | Passed |
+| `npm run lint` | 0 | Passed |
+| `npm test` | 0 | Passed — 80 files, 1531 tests (was 79/1525; +1 file, +6 tests) |
+
+### Recommended next action
+
+None specific to this phase. The excluded `ReadonlyArray<BuffableEnemy>` cast cluster in
+`rpg-enemy-spawn.ts`/`rpg-wave-dead-enemies-special.ts` remains a known, larger candidate if a future
+phase wants to take on cross-file enemy-array typing — it was deliberately not opened here to keep
+Phase 11 bounded.
+
+### Build, branch, commit, and push status
+
+- Branch: `main`. Build: `341`. `SAVE_VERSION`: unchanged.
+- Commit hash and push result: recorded after commit below.
+
+---
