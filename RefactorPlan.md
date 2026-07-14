@@ -1703,7 +1703,7 @@ deferred DOM rectangle buffer or other body inventories.
 **Baseline build:** `334`
 **Baseline commit:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
 **Baseline working tree:** Clean; `main` matched `origin/main`
-**Status:** Implementation in progress
+**Status:** Complete at Build 335
 
 ### Decision
 
@@ -2093,3 +2093,32 @@ planning.
   collection/crafted set (157 tests), renderer wiring plus readiness (24 tests), and typecheck after
   both context migrations.
 - Incremented the implementation build exactly once to 335. `SAVE_VERSION` remains unchanged.
+
+#### 2026-07-13 — Final validation and closeout
+
+- Repository auto-sync created and pushed `6263758` during the focused validation run. That commit
+  contains the core context migration, readiness policy/tests, and the then-current work log.
+  A second auto-sync created and pushed `b2a6b62` with the no-dynamic-key predicate refinement,
+  alias/reset coverage, Build 335, and living documentation. Both commits were preserved without
+  reset or rewrite; the final Phase Five commit is the report-only closeout.
+- Final focused matrix passed at exit 0: 8 files / 288 tests covering readiness, encounter
+  collections, Lens T2/T3, weapon chain, Life target collection, crafted post-hit, and crafted
+  Nullstone vortex behavior.
+- Final complete validation passed: typecheck exit 0; 74 files / 1493 tests exit 0; lint exit 0;
+  web build exit 0 with 442 modules; desktop build exit 0 with 442 modules; `git diff --check`
+  exit 0. Existing Node Boss MIDI invalid-relative-URL stderr remained in three tests. Vite retained
+  the existing chunk-size warning, and the web build also emitted a prepare-output timing warning.
+- Browser smoke passed on the local Vite build: startup, idle-overlay dismissal, RPG entry and
+  ordinary combat, Equation-to-RPG re-entry, low-graphics RPG runtime, automatic-graphics restore,
+  and zero console errors. Two existing missing zone-select boss-icon warnings were observed.
+  Fresh-profile progression did not expose deterministic boss, ALIVEN, Horizon, Stardust, Life,
+  elite/procedural, multi, AoE, or delegated-weapon fixtures, so no locked-scene coverage is claimed.
+- Hidden Electron startup passed: the built app remained alive for 8 seconds and was then stopped
+  intentionally (command exit 0).
+- Final source/hot-path review confirmed the two collection spreads execute only once inside
+  `createRpgRender()` context construction. The readiness predicate uses direct property checks and
+  nested loops only: no per-frame collection view, spread, mapped array, callback closure,
+  reflection, proxy, registry, `any`, dynamic key discovery, or dynamic key lookup was added.
+- Phase Five changed no targeting, damage callback API, weapon submodule context/factory, crafted
+  post-hit hook, reward, wave-completion, save, setting, UI, audio, or platform behavior. Phases One
+  through Four were not modified. No Phase Six was planned or begun.
