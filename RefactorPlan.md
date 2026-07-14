@@ -3985,3 +3985,40 @@ this series.
 - Commit hash and push result: recorded after commit below.
 
 ---
+
+## Phase 13 audit — no candidate found
+
+Confirmed clean `main` at `829d9f2c` (Build 342), matching `origin/main`, working tree clean,
+before this audit. Re-swept all of `src/` (not only `src/render/rpg/`, per Phase 12's suggestion to
+check other subsystems such as `src/sim/`) for the series' four target patterns:
+
+- `as unknown as` casts (non-test, non-dev): only the same five sites already reviewed in Phases
+  9–11 remain (`audio-context.ts:12`, `audio-system.ts:124` — cold-path `webkitAudioContext`
+  fallback probes; `rpg-boss-attack-config.ts:63`, `rpg-render.ts:1114`,
+  `rpg-encounter-collections.ts:505` — previously confirmed load-bearing/cold/dev-only). No new
+  site found anywhere in `src/sim/`, `src/data/`, `src/achievements/`, `src/ui/`, or elsewhere.
+- `Object.entries/values/keys` reflection: all remaining call sites are either save-file
+  deserialization over `Record<string, T>` dictionaries keyed by dynamic IDs
+  (`save-deserialize.ts`, ~15 sites — not fixed-shape typed objects, a dictionary walk is the
+  correct tool here), dev-panel-only rendering (`dev-panel-render.ts`, `dev-panel.ts`), one-time
+  atlas parsing (`loading-screen.ts`), a status-glossary listing (`rpg-status-glossary-tab.ts`), or
+  `weave-tier-effect-modifiers.ts` iterating a `StatKey`-cast dictionary. None are hot-path
+  reflection over a fixed-shape production interface.
+- Independently maintained parallel rosters: none found beyond the already-canonicalized
+  `RpgEncounterCollections` and `AOE_FAMILY_ROSTER`. `src/sim/` has no duplicated array-of-arrays
+  pattern.
+- Hot-loop per-call allocation: no new instance found; the update/draw hot paths already retain
+  direct property access per the series' established discipline.
+
+### Decision
+
+No candidate rises to this series' bar (genuinely isolated, repeated across multiple hot-path
+sites, bounded without a large architectural change). Phases One through Twelve remain the complete
+series. This is a documentation-only addendum — no source change, no build bump.
+
+### Recommended next action
+
+None. Revisit only if a new repeated, bounded, hot-path pattern is demonstrated with concrete
+file/line evidence.
+
+---
