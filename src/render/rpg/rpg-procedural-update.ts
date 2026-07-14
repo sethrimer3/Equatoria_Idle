@@ -129,7 +129,7 @@ export function updateDustWispEnemies(
   for (const e of enemies) {
     e.animPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    patrolStep(e as unknown as { x: number; y: number; vx: number; vy: number; patrolTimerMs: number }, dt, ctx);
+    patrolStep(e, dt, ctx);
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), DUSTWISP_SIZE / 2);
     contactDamage(e, dt, ctx);
   }

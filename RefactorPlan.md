@@ -3671,3 +3671,104 @@ manually targetable but isn't) is demonstrated first — do not restructure it s
 - Commit hash and push result: recorded after commit below.
 
 ---
+
+## Refactor Series Complete
+
+**Build:** 340
+**Date:** 2026-07-13
+**Agent:** Claude (Sonnet 5)
+
+### Audit performed
+
+Before starting a Phase Ten, `src/` was searched for the patterns this series has been eliminating:
+
+- `Object.entries()` / `Object.values()` / `Object.keys()` reflection over typed production objects.
+- `as unknown as` casts.
+- Independently maintained parallel arrays/rosters that could share one source of truth.
+- Per-call object allocation inside hot loops that could be hoisted.
+
+Findings, by file:
+
+- `src/render/rpg/rpg-targeting-targets.ts` — the only `Object.` match is a code comment
+  (`Object.values(target).some(...)` referenced in prose describing Phase Nine's own removal of that
+  pattern), not live code. No action.
+- `src/audio/audio-context.ts`, `src/audio/audio-system.ts`, `src/data/rpg/weave-tier-effect-modifiers.ts`,
+  `src/dev/session-telemetry.ts`, `src/settings/save-deserialize.ts`, `src/ui/loading/loading-screen.ts`,
+  `src/ui/panels/dev-panel-render.ts`, `src/ui/panels/dev-panel.ts`, `src/ui/panels/rpg-status-glossary-tab.ts`
+  — cold-path or dev/debug-only `Object.*`/`as unknown as` usage (one-time init, save-file
+  deserialization, dev-panel rendering). Not hot-path, not a repeated parallel-array pattern, not
+  bounded high-value.
+- `src/render/rpg/rpg-render.ts:1114` (`as unknown as` in the enemy bark system's
+  `getClosestLivingEnemy`) — one-time callback construction at renderer init, not a per-frame hot
+  path; the cast is already documented in an adjacent comment explaining why it's safe (all union
+  members share the accessed fields). Not bounded high-value.
+- `src/render/rpg/rpg-encounter-collections.ts:505` (`as unknown as object` in
+  `findDevStatusComboNearestTarget`) — dev-panel-only helper (`devApplyStatusCombo`), not part of the
+  gameplay hot path. Not bounded high-value.
+- `src/render/rpg/rpg-elite-buff.ts:92` and `src/render/rpg/rpg-boss-attack-config.ts:63` — both casts
+  are load-bearing: the elite-buff cast narrows to shield fields present only on a subset of the
+  `BuffableEnemy` union after an explicit `base.maxShieldHp !== undefined` guard, and the boss-attack
+  cast intentionally widens to `Record<string, unknown>` to detect and reject legacy fields that must
+  not exist on the typed interface. Removing either would remove real behavior, not just an unsafe
+  cast. Not eliminable without changing semantics.
+- `src/render/rpg/rpg-procedural-update.ts:132` — `patrolStep(e as unknown as {...patrolTimerMs: number}, dt, ctx)`
+  inside `updateDustWispEnemies()`, called once per Dust Wisp enemy per frame. `patrolStep()`'s
+  parameter type already declares `patrolTimerMs?: number` (optional), and `DustWispEnemy` already
+  has a required `patrolTimerMs: number` field, so the cast was dead: `DustWispEnemy` already
+  structurally satisfies `patrolStep`'s parameter type without any cast. This was the one genuine,
+  bounded, zero-risk finding from the audit.
+
+No independently maintained parallel roster arrays were found outside the already-canonicalized
+`RpgEncounterCollections` (`rpg-encounter-collections.ts`) and `AOE_FAMILY_ROSTER`
+(`rpg-render-targets.ts`/related), both introduced by earlier phases in this series. No new hot-loop
+per-call allocation was found.
+
+### Decision
+
+No candidate found rose to the bar this series has used for opening a phase: a genuinely isolated,
+bounded pattern repeated across multiple hot-path sites, requiring characterization tests and a
+tracked behavioral-preservation contract. The one real finding (the dead `patrolStep` cast) was a
+single unnecessary cast with no behavioral surface to characterize — the callee's parameter type
+already accepted the caller's argument type without narrowing, so removing the cast cannot change
+runtime behavior. It was fixed directly as a zero-risk cleanup rather than opened as a full phase.
+
+**The refactor series (Phases One through Nine) is complete.** Remaining `Object.*` and
+`as unknown as` usage in `src/` is either cold-path/dev-only, already documented and justified inline,
+or load-bearing (narrows a union or detects legacy fields on purpose). Future phases should only be
+opened when a new pattern meets the series' established bar: repeated across multiple hot-path sites,
+genuinely isolated, and bounded without a large architectural change.
+
+### Change made in this session
+
+- `src/render/rpg/rpg-procedural-update.ts` — removed the dead `as unknown as {...}` cast in
+  `updateDustWispEnemies()`'s call to `patrolStep()`; `DustWispEnemy` already structurally satisfies
+  `patrolStep`'s (optional-`patrolTimerMs`) parameter type, so `patrolStep(e, dt, ctx)` type-checks
+  without narrowing and is behaviorally identical.
+- `src/buildInfo.ts` — `BUILD_NUMBER` 339 → 340.
+
+### Validation Results
+
+| Command | Exit | Result |
+|---|---:|---|
+| `npm run typecheck` | 0 | Passed |
+| `npm test` | 0 | Passed — 79 files, 1525 tests |
+| `npm run lint` | 0 | Passed |
+
+No characterization tests were added: the change removes a cast that was already unnecessary for
+type-checking, so it cannot alter runtime behavior. Verified by full-suite pass with no edits to any
+expected test outcome. `npm run build` / `npm run build:desktop` were not re-run this session (no
+production-surface change beyond the single dead-cast removal and the build-number bump); typecheck,
+lint, and the full unit-test suite all passed clean.
+
+### Recommended next action
+
+None. Do not open a Phase Ten speculatively. Revisit this series only if a new repeated,
+bounded, hot-path pattern is demonstrated with concrete evidence (file/line, hot-vs-cold
+classification, and why it is isolated from the deferred/rejected items already recorded above).
+
+### Build, branch, commit, and push status
+
+- Branch: `main`. Build: `340`. `SAVE_VERSION`: unchanged.
+- Commit hash and push result: recorded after commit below.
+
+---
