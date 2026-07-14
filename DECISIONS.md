@@ -352,6 +352,20 @@ boss, wall, and plant-specific behavior remains with the existing callers.
 
 **Rationale**: The low graphics setting should reduce visual cost and brightness without changing combat behavior. The setting is plumbed from `app-game-loop.ts` into the RPG renderer and then into extracted draw modules via `setLowGraphicsMode()`.
 
+## Canonical RPG Attack Context and Readiness Policy (Build 335)
+
+**Decision**: `RpgPlayerAttackCtx` and `RpgWeaponCtx` inherit `RpgEncounterCollections` and carry
+the exact canonical owner created by `createRpgRender()`. The renderer composes their stable direct
+aliases once; weapon submodule context APIs remain unchanged.
+
+**Readiness boundary**: The attack-dispatch existence gate is a separate Node-safe policy with an
+exhaustive explicit participating/excluded classification. It preserves nested living-ALIVEN
+semantics, direct Horizon participation, nullable boss presence without an HP check, and every
+existing exclusion. Adding a canonical collection does not opt it into readiness automatically.
+
+**Rationale**: Canonical ownership removes renderer/context inventory drift, while a distinct
+tested policy prevents ownership breadth from silently changing attack behavior.
+
 ## RPG DPS Widget
 
 **Decision**: Replace the right-side `WEAPON:` text in the RPG stats panel with a compact square DPS widget. The widget shows one row per equipped weapon using a three-letter tier abbreviation and a colored bar. Damage events are sampled over a rolling 10 second window and grouped by weapon id.

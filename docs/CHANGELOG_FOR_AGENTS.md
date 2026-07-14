@@ -4,6 +4,23 @@ Lightweight log of architectural facts discovered and major structural changes. 
 
 ---
 
+## 2026-07-13 — Canonical attack context and readiness policy (build 335)
+
+**Agent:** Codex Phase Five implementation
+
+**Changed:**
+- `RpgPlayerAttackCtx` and `RpgWeaponCtx` now inherit the canonical encounter collection contract,
+  carry its exact owner, and receive stable direct aliases through one-time renderer composition.
+- Added a Node-safe readiness policy with explicit 52-key participating and 22-key excluded
+  classifications while preserving ALIVEN, Horizon, and boss special cases.
+
+**New invariants:**
+- Attack/weapon contexts do not redeclare or hand-wire parallel collection inventories.
+- Readiness classification covers every canonical key and does not automatically include new
+  collections or currently excluded Stardust, Life, Nadir, effect, reward, or spawn families.
+
+---
+
 ## 2026-07-13 — Typed RPG encounter body profiles (build 334)
 
 **Agent:** Codex Phase Four implementation

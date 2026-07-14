@@ -215,11 +215,15 @@ Routing guide for AI agents. Read `AGENTS.md` and `docs/REPO_MAP.md` first, then
 - Factory pattern: `rpg-factories.ts` → `rpg-factories-early/mid/late.ts`
 - Terrain per zone: `src/render/rpg/terrain/`
 - Crafted weapons: `src/data/rpg/crafted-weapon-helpers.ts` + `crafted-weapon-types.ts`
+- Canonical encounter arrays: `src/render/rpg/rpg-encounter-collections.ts`
+- Pre-attack target-existence policy: `src/render/rpg/rpg-player-attack-readiness.ts`
 
 **Common pitfalls:**
 - RPG visual state is in `render/rpg/`; persistent RPG state is in `sim/rpg/rpg-state.ts`
 - New persistent RPG fields require `SaveData.rpg` extension + `SAVE_VERSION` bump
 - Enemy catalog (bestiary) tracks `encounteredEnemyTypes` in save data
 - Boss IDs are numeric indices into the boss list, not string IDs
+- New encounter collections require an explicit readiness classification; do not infer readiness
+  from the full canonical inventory or change existing exclusions without behavior evidence.
 
 **Verify:** `npm run typecheck` + play-test in browser

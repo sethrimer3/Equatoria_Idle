@@ -2075,3 +2075,21 @@ planning.
   22 explicit exclusions. The two renderer construction sites still manually wire their
   collection aliases.
 - No production file has been changed. Characterization tests are the next step.
+
+#### 2026-07-13 — Characterization and implementation
+
+- Added the readiness characterization suite before production changes. Its required-red run
+  failed at module resolution because `rpg-player-attack-readiness.ts` did not yet exist (exit 1,
+  no tests collected), then the implemented policy passed all 6 cases.
+- Added the Node-safe readiness policy with exact 52-key participating and 22-key excluded
+  classifications. The predicate preserves direct-length families, nested `isAlive === true`
+  ALIVEN semantics, Horizon, and nullable boss presence without an HP check.
+- Migrated `RpgPlayerAttackCtx` and `RpgWeaponCtx` to inherit `RpgEncounterCollections` and retain
+  its exact owner. `createRpgRender()` now composes both contexts once using `collections` plus its
+  stable direct aliases; no submodule context or factory was changed.
+- Extended context-wiring coverage for ordinary, projectile, procedural, Horizon, and effect arrays
+  before and after an in-place lifecycle clear.
+- Step validation passed: readiness (6 tests), readiness plus Lens T2/T3 (137 tests), weapon/Life/
+  collection/crafted set (157 tests), renderer wiring plus readiness (24 tests), and typecheck after
+  both context migrations.
+- Incremented the implementation build exactly once to 335. `SAVE_VERSION` remains unchanged.

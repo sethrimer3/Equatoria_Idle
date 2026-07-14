@@ -243,6 +243,17 @@ Tier-to-gem mapping is defined in `src/render/assets/asset-paths.ts`.
 - Responsive layout with mobile-first CSS, landscape media queries
 - Generator positions are recomputed on every resize event
 
+## RPG Attack Collection Boundary
+
+`createRpgRender()` owns one `RpgEncounterCollections` object for its lifetime. The top-level
+`RpgPlayerAttackCtx` and `RpgWeaponCtx` inherit that canonical collection contract and receive the
+owner plus stable direct array aliases through one-time context composition. Weapon submodules may
+continue using those aliases; they are views of the same arrays, not a second owner.
+
+`rpg-player-attack-readiness.ts` is the Node-safe pre-dispatch target-existence policy. Its
+participating and excluded key profiles classify all canonical collections explicitly. Readiness
+does not imply targeting support and must not automatically expand when a collection is added.
+
 ## Boss MIDI Attack Scheduling
 
 Boss-wave fights can opt into MIDI-backed attack timing without changing normal waves or player attacks.

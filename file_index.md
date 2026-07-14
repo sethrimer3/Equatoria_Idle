@@ -993,7 +993,8 @@
 
 ### src/render/rpg/rpg-weapon-systems.ts
 - Orchestrator for all player weapon update logic for the RPG tab (~300 lines).
-- Exports `RpgWeaponCtx` interface (dependency-injection context), `RpgWeaponHandle` interface, and `createRpgWeaponSystems(ctx)` factory.
+- Exports `RpgWeaponCtx` interface (inherits the canonical encounter collection contract and
+  retains its owner), `RpgWeaponHandle` interface, and `createRpgWeaponSystems(ctx)` factory.
 - Directly implements: sand blade starter weapon only (delegates everything else to sub-modules).
 - Instantiates: `chain`, `vortex`, `poison`, `sunstone`, `sand`, `sword`, `emerald`, `laserBeam`, `ships`.
 - `reset()` calls reset on all nine sub-modules.
@@ -1131,9 +1132,19 @@
 ### src/render/rpg/rpg-player-attack.ts
 - Player auto-attack context and dispatcher (~222 lines).
 - Exports `RpgPlayerAttackCtx` interface and `performWeaponAttack(ctx, weaponId)`.
-- `RpgPlayerAttackCtx` carries all enemy arrays, damage functions, visual spawners, fluid reference, targeting callback, and weapon-system spawn callbacks via DI.
+- `RpgPlayerAttackCtx` inherits the canonical encounter collection contract, retains its owner,
+  and carries damage functions, visual spawners, fluid reference, targeting callback, and
+  weapon-system spawn callbacks via DI.
 - Handles delegating weapon kinds inline (gatling, chainWhip, vortex, swordCombo, poisonBolt, emeraldMissile, laserBeam, sunstoneMine) and delegates aoe/multi/single to the three handler modules below.
 - `rpg-render.ts` initialises `playerAttackCtx` after `weaponSystems` is created.
+
+### src/render/rpg/rpg-player-attack-readiness.ts *(added — build 335)*
+- Node-safe target-existence policy used at the existing pre-dispatch guard in
+  `performWeaponAttack()`.
+- Exports exact 52-key participating and 22-key excluded profiles covering all 74 canonical
+  collections, plus `hasAttackDispatchTarget()`.
+- Preserves direct-length families, nested `isAlive === true` ALIVEN semantics, Horizon, nullable
+  boss presence without an HP check, and all existing exclusions.
 
 ### src/render/rpg/rpg-crafted-post-hit.ts
 - Shared crafted-weapon post-hit effects. Exports `makeFracterylPool(strikes)` and `applyCraftedPostHit(...)`.
@@ -1509,6 +1520,8 @@
 - Build 334 adds distinct compiler-checked 39-key Verdure-resize and 42-key overlay-fade body
   profiles. The Node-safe helpers preserve direct body mutation and living-body overlap semantics
   without constructing a collection-reference array in the draw loop.
+- Build 335 uses this interface as the inherited collection boundary for top-level player-attack
+  and weapon contexts; their direct fields remain aliases of this owner.
 
 ### src/render/rpg/rpg-render.ts *(updated — build 169)*
 - Independent RPG canvas rendering system for the RPG tab (~990 lines after this refactor).
@@ -1517,6 +1530,8 @@
 - Misc reusable helpers moved to `rpg-render-helpers.ts` and consumed via thin forwarding wrappers.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
+- Build 335 composes the player-attack and weapon contexts once with `collections` and its stable
+  direct aliases instead of maintaining two renderer wiring inventories.
 - Player damage helpers (spawnDamageNumber, spawnHitVisualsAt, dealDamageToPlayer, etc.) extracted to `rpg-player-damage.ts` via `createPlayerDamageFns` factory; rpg-render.ts constructs `playerDamageCtx` and destructures all seven returned functions.
 - Player physics and movement (`updatePhysics`) extracted to `rpg-player-movement.ts`; rpg-render.ts owns `playerMovementState: PlayerMovementState` and `movementCtx: PlayerMovementCtx` and calls `updatePlayerMovement(movementCtx, playerMovementState, deltaMs)`.
 - Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.

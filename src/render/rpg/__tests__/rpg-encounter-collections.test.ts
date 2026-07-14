@@ -22,6 +22,8 @@ import type { RpgTargetingCtx } from '../rpg-targeting-types';
 import type { WaveManagerCtx } from '../rpg-wave-manager';
 import type { RpgDeathRestartCtx } from '../rpg-death-restart';
 import type { RpgFieldSpace } from '../rpgFieldSpace';
+import type { RpgPlayerAttackCtx } from '../rpg-player-attack';
+import type { RpgWeaponCtx } from '../rpg-weapon-systems';
 import { doRestart } from '../rpg-death-restart';
 import { createBossAttackState } from '../rpg-boss-attack-types';
 
@@ -381,7 +383,7 @@ describe('RPG encounter reset profiles', () => {
 });
 
 describe('RPG encounter context wiring', () => {
-  it('keeps update, draw, targeting, wave, and restart consumers on the same references', () => {
+  it('keeps all canonical consumers on the same owner and direct array references', () => {
     const collections = createRpgEncounterCollections();
     const update: Pick<RpgUpdateCtx, 'collections'> = { collections };
     const draw: Pick<RpgDrawCtx, 'collections' | 'enemies'> = {
@@ -397,22 +399,65 @@ describe('RPG encounter context wiring', () => {
       enemies: collections.enemies,
     };
     const restart: Pick<RpgDeathRestartCtx, 'collections'> = { collections };
+    const weapon: Pick<
+      RpgWeaponCtx,
+      | 'collections'
+      | 'enemies'
+      | 'sapphireMissiles'
+      | 'dustWispEnemies'
+      | 'horizonPentagonGroups'
+      | 'hitEffects'
+    > = { collections, ...collections };
+    const playerAttack: Pick<
+      RpgPlayerAttackCtx,
+      | 'collections'
+      | 'enemies'
+      | 'sapphireMissiles'
+      | 'dustWispEnemies'
+      | 'horizonPentagonGroups'
+      | 'hitEffects'
+    > = { collections, ...collections };
 
     expect(update.collections).toBe(collections);
     expect(draw.collections).toBe(collections);
     expect(targeting.collections).toBe(collections);
     expect(wave.collections).toBe(collections);
     expect(restart.collections).toBe(collections);
+    expect(weapon.collections).toBe(collections);
+    expect(playerAttack.collections).toBe(collections);
     expect(draw.enemies).toBe(collections.enemies);
     expect(targeting.enemies).toBe(collections.enemies);
     expect(wave.enemies).toBe(collections.enemies);
+    for (const context of [weapon, playerAttack]) {
+      expect(context.enemies).toBe(collections.enemies);
+      expect(context.sapphireMissiles).toBe(collections.sapphireMissiles);
+      expect(context.dustWispEnemies).toBe(collections.dustWispEnemies);
+      expect(context.horizonPentagonGroups).toBe(collections.horizonPentagonGroups);
+      expect(context.hitEffects).toBe(collections.hitEffects);
+    }
 
     collections.enemies.push({ hp: 1 } as never);
+    collections.sapphireMissiles.push({ hp: 1 } as never);
+    collections.dustWispEnemies.push({ hp: 1 } as never);
+    collections.horizonPentagonGroups.push({ hp: 1 } as never);
+    collections.hitEffects.push({ alpha: 1 } as never);
     clearForZoneSwitch(collections);
 
     expect(draw.enemies).toEqual([]);
     expect(targeting.enemies).toEqual([]);
     expect(wave.enemies).toEqual([]);
+    for (const context of [weapon, playerAttack]) {
+      expect(context.enemies).toBe(collections.enemies);
+      expect(context.enemies).toEqual([]);
+      expect(context.sapphireMissiles).toBe(collections.sapphireMissiles);
+      expect(context.sapphireMissiles).toEqual([]);
+      expect(context.dustWispEnemies).toBe(collections.dustWispEnemies);
+      expect(context.dustWispEnemies).toEqual([]);
+      expect(context.horizonPentagonGroups).toBe(collections.horizonPentagonGroups);
+      expect(context.horizonPentagonGroups).toEqual([]);
+      expect(context.hitEffects).toBe(collections.hitEffects);
+      expect(context.hitEffects).toEqual([]);
+    }
   });
 
   it('routes doRestart through the normal profile without replacing references', () => {

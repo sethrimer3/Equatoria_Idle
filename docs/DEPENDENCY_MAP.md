@@ -60,6 +60,7 @@ render/particles/particle-system.ts
 
 render/rpg/rpg-render.ts  (large orchestrator)
   ├── rpg-types.ts, rpg-constants.ts
+  ├── rpg-encounter-collections.ts (canonical owner)
   ├── rpg-enemy-*.ts, rpg-boss-*.ts
   ├── rpg-weapon-*.ts, rpg-player-*.ts
   ├── rpg-targeting*.ts, rpg-damage.ts
@@ -91,3 +92,6 @@ No runtime npm dependencies — the game uses only browser APIs (Canvas 2D, Web 
 No confirmed circular dependencies found. Potential risk:
 - `sim/looms/loom-state.ts` ↔ `sim/resources/resource-state.ts` (both import each other's types) — currently resolved by importing only functions, not the module itself
 - RPG weapon systems: `rpg-weapon-systems.ts` aggregates many weapon modules; adding cross-weapon imports there would risk cycles
+- `rpg-player-attack.ts` and `rpg-weapon-systems.ts` inherit `RpgEncounterCollections`; the renderer
+  supplies the same owner and one-time direct aliases, while readiness remains a separate Node-safe
+  policy in `rpg-player-attack-readiness.ts`.

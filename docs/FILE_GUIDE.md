@@ -82,6 +82,9 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `background/substrate-effect.ts` | Substrate background pattern | Optional |
 | `rpg/rpg-render.ts` | `createRpgRender()` — RPG composition root; creates one canonical encounter collection owner | CAUTION — very large |
 | `rpg/rpg-encounter-collections.ts` | Node-safe 74-array owner plus typed reset, Verdure-resize, and overlay-fade profiles | CAUTION — lifecycle/semantic membership |
+| `rpg/rpg-player-attack-readiness.ts` | Node-safe exact attack-dispatch collection classification and readiness predicate | CAUTION — behavior-preserving membership |
+| `rpg/rpg-player-attack.ts` | Auto-attack dispatcher; context inherits canonical encounter collections | CAUTION — combat behavior |
+| `rpg/rpg-weapon-systems.ts` | Player weapon-system composition; context inherits canonical encounter collections | CAUTION — broad weapon boundary |
 | `rpg/rpg-boss-midi-runtime.ts` | Boss-only MIDI asset loading/cache and adapter into existing boss attacks | Medium |
 | `rpg/rpg-constants.ts` | RPG layout constants: logical size, player init | `RPG_LOGICAL_WIDTH/HEIGHT` |
 | `rpg/rpg-types.ts` | RPG entity types: `RpgMote`, `LaserEnemy`, etc. | Type definitions |

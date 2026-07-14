@@ -221,6 +221,9 @@ Major clusters:
 - encounter ownership: `rpg-encounter-collections.ts` is the canonical per-renderer array inventory,
   factory, boss/zone/restart profile source, and typed Verdure-resize/overlay-fade body-profile
   source; do not add parallel lifecycle or semantic membership lists.
+- attack readiness: `rpg-player-attack-readiness.ts` owns the exact participating/excluded
+  collection policy; `RpgPlayerAttackCtx` and `RpgWeaponCtx` inherit the canonical collection
+  contract and retain its owner plus direct aliases.
 - factories: `rpg-factories.ts`, `rpg-factories-early.ts`, `rpg-factories-mid.ts`, `rpg-factories-late.ts`.
 - enemies: enemy update/draw modules, elite update/draw modules, Aliven modules.
 - player/weapons: player attack, projectiles, chain whip, sword, lasers, poison, missiles, mines, companion ships.

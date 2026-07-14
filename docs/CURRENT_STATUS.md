@@ -1,5 +1,17 @@
 # Equatoria Idle Current Status
 
+## Build 335: canonical attack context and readiness policy
+
+- The top-level player-attack and weapon-system contexts now derive encounter arrays from
+  `RpgEncounterCollections`, retain the renderer's exact canonical owner, and expose the same
+  stable direct aliases expected by existing attack submodules.
+- `createRpgRender()` composes both contexts once from the canonical collection object instead of
+  maintaining two hand-written wiring inventories.
+- A Node-safe attack-readiness policy preserves the exact 52 participating collection keys, 22
+  exclusions, nested living-ALIVEN rule, Horizon participation, and nullable boss-presence rule.
+- Characterization coverage exhaustively classifies all 74 canonical keys and verifies alias
+  identity before and after lifecycle clears.
+
 ## Build 334: typed RPG encounter body profiles
 
 - The canonical encounter owner now exports separate compiler-checked 39-key Verdure-resize and
