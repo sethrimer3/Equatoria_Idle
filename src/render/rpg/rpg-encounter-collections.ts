@@ -458,3 +458,51 @@ export interface AoeDamageableEntity {
   hp: number;
   maxHp: number;
 }
+
+/**
+ * Fixed subset of `AOE_FAMILY_ROSTER` searched by
+ * `rpg-render.ts::devApplyStatusCombo()`'s nearest-enemy lookup (Phase Eight).
+ * This is intentionally a subset — the dev tool does not search the full
+ * 15-family AoE roster, only the 7 families below plus `eliteEnemies`.
+ */
+const DEV_STATUS_COMBO_FAMILY_KEYS = [
+  'enemies', 'rubyEnemies', 'emeraldEnemies', 'sapphireEnemies',
+  'nullstoneEnemies', 'fracterylEnemies', 'eigensteinEnemies',
+] as const satisfies readonly AoeFamilyKey[];
+
+const DEV_STATUS_COMBO_FAMILY_KEY_SET: ReadonlySet<AoeFamilyKey> = new Set(DEV_STATUS_COMBO_FAMILY_KEYS);
+
+/**
+ * Find the nearest live enemy to `mote` across `devApplyStatusCombo()`'s
+ * fixed 8-family subset (7 `AOE_FAMILY_ROSTER` families plus `eliteEnemies`),
+ * with the live boss enemy taking precedence when it is strictly closer.
+ */
+export function findDevStatusComboNearestTarget(
+  collections: RpgEncounterCollections,
+  mote: { x: number; y: number },
+  bossEnemy: { x: number; y: number; hp: number } | null,
+): object | null {
+  let nearest: object | null = null;
+  let nearestDist = Infinity;
+  for (const { key } of AOE_FAMILY_ROSTER) {
+    if (!DEV_STATUS_COMBO_FAMILY_KEY_SET.has(key)) continue;
+    for (const e of collections[key]) {
+      if (e.hp <= 0) continue;
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d < nearestDist) { nearestDist = d; nearest = e; }
+    }
+  }
+  for (const e of collections[AOE_ELITE_FAMILY_KEY]) {
+    if (e.hp <= 0) continue;
+    const dx = e.x - mote.x, dy = e.y - mote.y;
+    const d = dx * dx + dy * dy;
+    if (d < nearestDist) { nearestDist = d; nearest = e; }
+  }
+  if (bossEnemy && bossEnemy.hp > 0) {
+    const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+    const d = dx * dx + dy * dy;
+    if (d < nearestDist) { nearest = bossEnemy as unknown as object; }
+  }
+  return nearest;
+}

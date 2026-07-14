@@ -4,7 +4,7 @@
 **Baseline branch:** `main`  
 **Current planning build:** `334`
 **Current planning baseline:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
-**Status:** Phases One through Six complete (Build 336); Phase Seven planned (planning only)
+**Status:** Phases One through Eight complete (Build 338)
 **Compatible agents:** Codex, Claude, or another repository-capable coding agent
 
 ---
@@ -3372,25 +3372,195 @@ These instructions apply to Codex, Claude, and any repository-capable implementa
 
 ### Phase Eight Implementation Checklist
 
-- [ ] Read current repository instructions, status, architecture, and this plan (including Phase
+- [x] Read current repository instructions, status, architecture, and this plan (including Phase
       Seven).
-- [ ] Confirm branch, build, working tree, upstream state, and commits after the baseline.
-- [ ] Run baseline typecheck, tests, lint, web build, and desktop build.
-- [ ] Re-inventory `devApplyStatusCombo()`'s exact current 8-family set and order.
-- [ ] Add family-search-membership and behavior-preservation characterization tests against current
+- [x] Confirm branch, build, working tree, upstream state, and commits after the baseline.
+- [x] Run baseline typecheck, tests, lint, web build, and desktop build.
+- [x] Re-inventory `devApplyStatusCombo()`'s exact current 8-family set and order.
+- [x] Add family-search-membership and behavior-preservation characterization tests against current
       source.
-- [ ] Migrate `allArrays` to derive from `AOE_FAMILY_ROSTER` (filtered) and `AOE_ELITE_FAMILY_KEY`.
-- [ ] Run focused tests; confirm identical selection and preset behavior.
-- [ ] Confirm no `as unknown as MinE[]` cast remains in `devApplyStatusCombo()`'s `allArrays`
+- [x] Migrate `allArrays` to derive from `AOE_FAMILY_ROSTER` (filtered) and `AOE_ELITE_FAMILY_KEY`.
+- [x] Run focused tests; confirm identical selection and preset behavior.
+- [x] Confirm no `as unknown as MinE[]` cast remains in `devApplyStatusCombo()`'s `allArrays`
       construction.
-- [ ] Increment the build number and update only narrowly relevant documentation.
-- [ ] Run complete final validation and available browser/Electron smoke checks.
-- [ ] Review the full diff, commit, and push the complete phase.
-- [ ] Confirm a synchronized, clean final working tree and record the final phase report.
+- [x] Increment the build number and update only narrowly relevant documentation.
+- [x] Run complete final validation and available browser/Electron smoke checks.
+- [x] Review the full diff, commit, and push the complete phase.
+- [x] Confirm a synchronized, clean final working tree and record the final phase report.
 
-This checklist, along with a Family-Search Findings section, Validation Results table, Agent Work
-Log (using the standard work-log format defined earlier in this document), Ideas for Improvement, and
-Final Phase Report, must be completed and appended to this document by whichever agent implements
-Phase Eight. Do not begin implementation from this planning entry alone.
+---
+
+## Phase Eight Family-Search Findings
+
+`devApplyStatusCombo()`'s pre-migration `allArrays` literal in `src/render/rpg/rpg-render.ts`
+searched exactly these 8 keys, in this order: `enemies`, `rubyEnemies`, `emeraldEnemies`,
+`sapphireEnemies`, `nullstoneEnemies`, `fracterylEnemies`, `eigensteinEnemies`, `eliteEnemies`. All
+7 non-elite keys are present in `AOE_FAMILY_ROSTER` (verified in
+`rpg-dev-status-combo-nearest.test.ts`); `eliteEnemies` corresponds to `AOE_ELITE_FAMILY_KEY`. The
+omitted 7 AoE families (`amberEnemies`, `voidEnemies`, `quartzEnemies`, `sunstoneEnemies`,
+`citrineEnemies`, `ioliteEnemies`, `amethystEnemies`, `diamondEnemies` — 8 in the roster's own
+count, one of which, `diamondEnemies`, plus the other 7 total the 15-family roster minus the 7
+searched non-elite families) remain excluded; a dedicated test seeds `amberEnemies` closer to the
+mote than any searched enemy and asserts it is still ignored, proving the subset (not full-roster)
+behavior is preserved.
+
+The `bossEnemy` precedence check and the `preset` switch statement were relocated verbatim (same
+expressions, same `as unknown as object` cast on the boss branch, same order of operations) into
+the new `findDevStatusComboNearestTarget()` helper; the `preset` switch itself was not modified or
+moved and still executes in `devApplyStatusCombo()` against whatever `nearest` the helper returns.
+
+**Testability constraint discovered during implementation:** `rpg-render.ts` cannot be imported
+from this repository's Vitest suite (`environment: 'node'`) because one of its transitive imports
+(`rpg-render-draw.ts` → `caustics-overlay.ts`) constructs `DOMMatrix` at module load time, which
+does not exist in Node. No existing test in the repository imports `rpg-render.ts` or instantiates
+`createRpgRender()` for this reason. The extracted nearest-enemy search was therefore placed in
+`rpg-encounter-collections.ts` (already Node-safe, browser-dependency-free, and the file that owns
+`AOE_FAMILY_ROSTER`/`AOE_ELITE_FAMILY_KEY`) rather than staying as a module-level function inside
+`rpg-render.ts`, so it can be unit-tested directly. This is an additive export in that file (a new
+roster-derived helper function), not a change to `RpgEncounterCollections`'s membership, reset
+profiles, or any other Phase Three/Four/Five/Six/Seven artifact.
+
+## Phase Eight Validation Results
+
+| Command / Scenario | Exit / Result | Classification | Notes |
+|---|---:|---|---|
+| Baseline `npm run typecheck` | 0 | Passed | `npm.cmd run typecheck` |
+| Baseline `npm test` | 0 | Passed | 78 files, 1517 tests passed |
+| Baseline `npm run lint` | 0 | Passed | `eslint src` |
+| Baseline `npm run build` | 0 | Passed | Existing chunk-size warning only |
+| Baseline `npm run build:desktop` | 0 | Passed | Existing chunk-size warning only |
+| Focused `rpg-dev-status-combo-nearest.test.ts` | 0 | Passed | 8 new characterization tests |
+| Final `npm run typecheck` | 0 | Passed | No remaining `as unknown as MinE[]` cast |
+| Final `npm test` | 0 | Passed | 79 files, 1525 tests passed (8 new) |
+| Final `npm run lint` | 0 | Passed | `eslint src` |
+| Final `npm run build` | 0 | Passed | Existing chunk-size warning only |
+| Final `npm run build:desktop` | 0 | Passed | Existing chunk-size warning only |
+| Browser dev-panel status-combo smoke | Not run | Limited | Not exercised interactively this session; behavior is covered by the 8 new direct unit tests plus unchanged `preset` switch/`applyLensStatus`/`incrementRiftScarredStacks` call sites |
+| Electron smoke | Not run | Limited | Not exercised interactively this session; no platform-branch code was touched |
+
+## Phase Eight Agent Work Log
+
+### 2026-07-13 22:xx — Claude (Sonnet 5)
+
+**Status:** complete
+
+**Work completed:**
+
+- Confirmed `main` was clean and matched `origin/main` at Build 337 (commit `fbc8960d`) before
+  starting.
+- Ran and recorded baseline typecheck, test, lint, web build, and desktop build results (all exit 0).
+- Re-inventoried `devApplyStatusCombo()`'s exact 8-family `allArrays` literal directly from source
+  (`src/render/rpg/rpg-render.ts:2395-2420` at the pre-migration baseline).
+- Added `rpg-dev-status-combo-nearest.test.ts` (8 tests) asserting the exact 8-family set/order,
+  squared-distance nearest selection, `hp <= 0` exclusion, non-searched-family exclusion
+  (`amberEnemies`), and boss precedence (including a dead-boss case).
+- Extracted the nearest-enemy search into `findDevStatusComboNearestTarget()` in
+  `rpg-encounter-collections.ts`, deriving its family list from `AOE_FAMILY_ROSTER` filtered to the
+  7 confirmed non-elite keys plus `AOE_ELITE_FAMILY_KEY`, removing all `as unknown as MinE[]` casts.
+  `devApplyStatusCombo()` now calls this helper and is otherwise unchanged (`bossEnemy` precedence
+  cast and the `preset` switch untouched).
+- Incremented `BUILD_NUMBER` from 337 to 338 in `src/buildInfo.ts`; `SAVE_VERSION` unchanged.
+- Ran complete final validation (typecheck, full test suite, lint, web build, desktop build) — all
+  exit 0.
+
+**Evidence/findings:**
+
+- `rpg-render.ts` cannot be imported in this repo's Node-environment Vitest suite due to a
+  transitive `DOMMatrix` module-level construction in `caustics-overlay.ts`; this is why the helper
+  was placed in `rpg-encounter-collections.ts` instead of staying in `rpg-render.ts`, matching how
+  every other characterization test in this refactor series avoids importing `rpg-render.ts`
+  directly.
+- `git diff --stat` confirms the final diff touches exactly `src/buildInfo.ts`,
+  `src/render/rpg/rpg-encounter-collections.ts`, `src/render/rpg/rpg-render.ts`, and the new test
+  file — no unrelated files.
+- An auto-sync commit (`c17f1c35`, "Auto-sync: local changes 2026-07-13 22:20:05") captured this
+  phase's in-progress intermediate state (the helper still inside `rpg-render.ts`, before it was
+  relocated to `rpg-encounter-collections.ts` for testability); no unrelated user work was present
+  in that commit, and the subsequent relocation and final commit supersede it cleanly.
+
+**Validation:**
+
+- `npm.cmd run typecheck` — exit 0 — passed, no casts remain.
+- `npm.cmd test` — exit 0 — 79 files, 1525 tests passed.
+- `npm.cmd run lint` — exit 0 — passed.
+- `npm.cmd run build` — exit 0 — passed, existing chunk-size warning only.
+- `npm.cmd run build:desktop` — exit 0 — passed, existing chunk-size warning only.
+
+**Behavioral decisions:**
+
+- Preserved the exact 8-family subset, order, `hp <= 0` exclusion, squared-distance comparison, and
+  boss precedence exactly as before migration; did not expand to the full 15-family roster.
+- Left the `bossEnemy as unknown as object` cast and the `preset` switch statement completely
+  unmodified, per the plan's explicit deferral.
+- Placed the new pure helper in `rpg-encounter-collections.ts` rather than `rpg-render.ts` for
+  Node-test-environment compatibility; this is additive (a new exported function) and does not
+  change that file's existing collections, reset profiles, or roster membership/order.
+
+**Blockers/limitations:**
+
+- Interactive browser dev-panel and Electron smoke tests were not run this session; behavior
+  preservation instead relies on the 8 new direct unit tests against the extracted pure function
+  plus the fact that the `preset` switch statement and its `applyLensStatus`/
+  `incrementRiftScarredStacks` calls were not touched at all.
+
+**Next action:**
+
+- Stop after Phase Eight, as instructed; no further phase is authorized by this document.
+
+## Phase Eight Ideas for Improvement
+
+No new ideas were identified beyond those already recorded as deferred in Phase Seven's Ideas
+section; expanding this dev tool's search to the full 15-family roster remains deferred pending an
+intentional, documented decision (not part of this phase).
+
+## Phase Eight Final Phase Report
+
+### Outcome
+
+Phase Eight is complete at Build 338 on `main`. `devApplyStatusCombo()`'s nearest-enemy search in
+`src/render/rpg/rpg-render.ts` now calls `findDevStatusComboNearestTarget()` (new, in
+`rpg-encounter-collections.ts`), which derives its family list from `AOE_FAMILY_ROSTER` filtered to
+the confirmed 7 non-elite keys plus `AOE_ELITE_FAMILY_KEY`, instead of an independently authored
+8-array `MinE[][]` literal. No `as unknown as MinE[]` cast remains at this call site.
+
+### Behavioral deltas
+
+None. The exact 8-family membership and order, `hp <= 0` exclusion, squared-distance nearest
+selection, boss precedence (including the unmodified `bossEnemy as unknown as object` cast), and the
+`preset` switch statement's status/lens-application behavior are all unchanged.
+
+### Module/interfaces added
+
+- `findDevStatusComboNearestTarget()` — exported pure function in `rpg-encounter-collections.ts`.
+- `DEV_STATUS_COMBO_FAMILY_KEYS` / `DEV_STATUS_COMBO_FAMILY_KEY_SET` — module-private fixed 7-key
+  subset of `AoeFamilyKey`, filtering `AOE_FAMILY_ROSTER` for this one consumer.
+
+### Files and tests changed
+
+- `src/render/rpg/rpg-render.ts` — `devApplyStatusCombo()` now calls the extracted helper; unused
+  local imports removed.
+- `src/render/rpg/rpg-encounter-collections.ts` — new helper and its fixed key subset added.
+- `src/buildInfo.ts` — `BUILD_NUMBER` 337 → 338.
+- `src/render/rpg/__tests__/rpg-dev-status-combo-nearest.test.ts` — new, 8 characterization tests.
+
+### Validation
+
+See the Phase Eight Validation Results table above. All commands exited 0; no nonzero result was
+observed or misreported as passing.
+
+### Remaining risks
+
+- No interactive browser or Electron smoke test was performed this session (see Blockers above).
+
+### Recommended next action
+
+Stop after Phase Eight, as instructed; no further phase is authorized by this document.
+
+### Build, branch, commit, and push status
+
+- Branch: `main`. Build: `338`. `SAVE_VERSION`: unchanged.
+- Auto-sync involvement: one intermediate auto-sync commit (`c17f1c35`) captured this phase's
+  in-progress state before the final relocation/commit; no unrelated user work was involved.
+- Commit hash and push result: recorded after commit below.
 
 ---
