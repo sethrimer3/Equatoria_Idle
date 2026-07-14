@@ -24,6 +24,28 @@ import { hasTopographicTerrainLineOfSight } from './terrain/topographic-terrain'
 import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 import { lifeGridToWorldCenter } from './life-grid';
 
+/**
+ * Resolves the single populated entity reference on a `ClosestTarget` built by
+ * `collectEnemyBodyTargets`/`tryTargetEnemyAt` (bodies only, no projectiles).
+ * Each target carries exactly one entity-typed field for this purpose, so this
+ * `??` chain is equivalent to (and replaces) an `Object.values(target).some(...)`
+ * reflection scan without allocating an intermediate values array per call.
+ */
+export function getTargetObject(target: ClosestTarget): object | null {
+  return target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void
+    ?? target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite
+    ?? target.amethyst ?? target.diamond ?? target.nullstone ?? target.fracteryl ?? target.eigenstein
+    ?? target.polyomino ?? target.fissilePolyomino ?? target.refractorPolyomino
+    ?? target.elite ?? target.alivenParticle ?? target.lifeCell ?? target.lifeCoreColony ?? target.boss
+    ?? target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk
+    ?? target.jellyfish ?? target.eliteJellyfish ?? target.clothGhost ?? target.plantTurret
+    ?? target.gearInsect ?? target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand
+    ?? target.sandFish ?? target.quartzFish ?? target.rubyFish ?? target.sunstoneFish
+    ?? target.emeraldFish ?? target.sapphireFish ?? target.amethystFish ?? target.diamondFish
+    ?? target.plantProj ?? target.verdurePlant ?? target.binaryRing ?? target.nadirCubePoint
+    ?? target.horizonPentagonReal ?? null;
+}
+
 export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetCollectionOptions): ClosestTarget[] {
   const requireLos = opts?.requireLineOfSight ?? false;
   const terrain = requireLos ? ctx.getTerrainState() : null;
@@ -242,7 +264,7 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
   // Validate existing target is still alive
   if (targetedEnemy) {
     const matchingTarget = collectEnemyBodyTargets(ctx, { includeProjectiles: true })
-      .find((target) => Object.values(target).some((value) => value === targetedEnemy));
+      .find((target) => getTargetObject(target) === targetedEnemy);
     if (matchingTarget) return matchingTarget;
 
     // Check all enemy arrays to see if target still exists

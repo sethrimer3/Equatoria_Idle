@@ -9,6 +9,7 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgContactDamageMultiplier } from '../../sim/rpg/rpg-state';
 import type { ClosestTarget } from './rpg-types';
 import { PLAYER_HIT_RADIUS } from './rpg-constants';
+import { getTargetObject } from './rpg-targeting-targets';
 
 export const SPEED_CONTACT_DAMAGE_SOURCE_ID = 'skill_speed';
 
@@ -82,10 +83,8 @@ export function tickPlayerContactDamage(
 }
 
 function getTargetMaxHp(target: ClosestTarget): number | null {
-  for (const value of Object.values(target)) {
-    if (hasMaxHp(value)) return value.maxHp;
-  }
-  return null;
+  const entity = getTargetObject(target);
+  return hasMaxHp(entity) ? entity.maxHp : null;
 }
 
 function hasMaxHp(value: unknown): value is { maxHp: number } {

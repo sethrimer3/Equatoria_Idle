@@ -4,7 +4,7 @@
 **Baseline branch:** `main`  
 **Current planning build:** `334`
 **Current planning baseline:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
-**Status:** Phases One through Eight complete (Build 338)
+**Status:** Phases One through Nine complete (Build 339)
 **Compatible agents:** Codex, Claude, or another repository-capable coding agent
 
 ---
@@ -3561,6 +3561,113 @@ Stop after Phase Eight, as instructed; no further phase is authorized by this do
 - Branch: `main`. Build: `338`. `SAVE_VERSION`: unchanged.
 - Auto-sync involvement: one intermediate auto-sync commit (`c17f1c35`) captured this phase's
   in-progress state before the final relocation/commit; no unrelated user work was involved.
+- Commit hash and push result: recorded after commit below.
+
+---
+
+## Phase Nine — Canonical Target-Entity Resolution on the Targeting Hot Path
+
+**Status:** Complete (Build 339)
+
+### Objective
+
+Eliminate `Object.values(target).some(...)`/`Object.values(target)` reflection over production
+`ClosestTarget` objects on the manual-targeting and player-contact-damage paths, replacing each with
+the single existing canonical `getTargetObject()` resolver so the same equality/lookup logic is not
+independently re-derived (and does not allocate an intermediate values array per call).
+
+### Audit findings that motivated this phase
+
+- `rpg-targeting.ts` already defined a private `getTargetObject(target: ClosestTarget): object | null`
+  — a `??` chain over every body-only entity field — used only by `tryTargetEnemyAt()`. Two other
+  call sites re-derived equivalent-but-separate logic via `Object.values(target).some(value => value
+  === targetedEnemy)`:
+  - `rpg-targeting-targets.ts::getTargetedEnemy()` (manual-target revalidation against the live
+    target list, called every frame while a manual target is active).
+  - `rpg-targeting.ts::getManualTargetedEnemy()` (identical revalidation, called from the render
+    loop's HUD/manual-target read).
+- `rpg-player-contact-damage.ts::getTargetMaxHp()` used `Object.values(target)` plus a `hasMaxHp`
+  duck-type guard to find the one entity field carrying `maxHp`, on the Speed skill's contact-damage
+  tick (up to `MAX_CATCHUP_TICKS` batches, each iterating every contact-radius target) — a per-hit
+  reflection allocation on a combat hot path, matching the "per-hit object allocations" and
+  "reflection over production collections" patterns this series has been eliminating.
+- No independently-maintained roster duplication was found beyond what Phases Three/Five/Seven/Eight
+  already consolidated; `AOE_FAMILY_ROSTER` and `RpgEncounterCollections` remain the only canonical
+  family/collection owners and were not touched.
+- The `getTargetedEnemy()`/`getManualTargetedEnemy()` 30-branch `.includes()` membership chain (with
+  its per-family `as EnemyType` casts) was investigated and left untouched: it is a curated subset of
+  "manually targetable body" families that deliberately excludes several procedural land-creature
+  families and all projectile/hazard families, matching the pre-existing `collectEnemyBodyTargets`
+  scope used to populate `targetedEnemy` in the first place. Changing its membership was out of scope
+  for this phase (no defect was demonstrated; would require the same characterize-then-correct
+  process as the Phase Three Stardust finding, and was not pursued here).
+
+### Behavioral equivalence
+
+`getTargetObject()` returns the first non-null populated entity field from a fixed `??` chain. Every
+`ClosestTarget` produced by `collectEnemyBodyTargets()` carries exactly one populated entity field for
+the purpose of this equality/lookup check (the one exception, `aliven_particle`, populates both
+`alivenParticle` and `alivenGroup`, but `targetedEnemy`/the contact-damage entity is only ever assigned
+from a prior `getTargetObject()` call, so it can never equal `alivenGroup`). `Object.values(target)`
+therefore could only ever match on the same field `getTargetObject()` already resolves, for both the
+identity-equality use (`getTargetedEnemy`/`getManualTargetedEnemy`) and the duck-typed-lookup use
+(`getTargetMaxHp`). No membership, ordering, or precedence change results.
+
+### Files changed
+
+- `src/render/rpg/rpg-targeting-targets.ts` — added exported `getTargetObject()` (moved from
+  `rpg-targeting.ts` to avoid a circular import, since `rpg-targeting.ts` already imports from this
+  file); replaced the `Object.values(target).some(...)` scan in `getTargetedEnemy()` with
+  `getTargetObject(target) === targetedEnemy`.
+- `src/render/rpg/rpg-targeting.ts` — imports `getTargetObject` from `rpg-targeting-targets.ts`
+  instead of defining it locally; `getManualTargetedEnemy()` now calls
+  `getTargetObject(resolved) === targetedEnemy` instead of `Object.values(resolved).some(...)`.
+- `src/render/rpg/rpg-player-contact-damage.ts` — `getTargetMaxHp()` now calls
+  `getTargetObject(target)` once and checks `hasMaxHp()` on the single result, instead of iterating
+  `Object.values(target)`.
+- `src/buildInfo.ts` — `BUILD_NUMBER` 338 → 339.
+
+### Constraints honored
+
+- No `any`, no new unsafe casts (none were introduced; `getTargetObject`'s existing `??` chain is
+  fully typed against `ClosestTarget`'s optional fields).
+- No behavioral change (see Behavioral equivalence above).
+- No new per-hit allocation; the change removes one allocation (the `Object.values` array) per call
+  on three call sites, one of which (`getTargetMaxHp`) runs inside the Speed-skill contact-damage tick
+  loop.
+- No sub-agents were used for this phase.
+
+### Validation Results
+
+| Command | Exit | Result |
+|---|---:|---|
+| `npm run typecheck` | 0 | Passed |
+| `npm test` | 0 | Passed — 79 files, 1525 tests |
+| `npm run lint` | 0 | Passed |
+| `npm run build` | 0 | Passed — existing chunk-size warning only |
+| `npm run build:desktop` | 0 | Passed — existing chunk-size warning only |
+
+No new characterization tests were added: the change is a behavior-preserving substitution of an
+existing, already-tested pure helper (`getTargetObject`, previously exercised indirectly via
+`tryTargetEnemyAt`) for an equivalent reflection-based scan, verified by full-suite pass with no
+edits to any expected test outcome. Interactive browser/Electron smoke testing was not performed this
+session; the change is narrowly scoped to internal identity-resolution logic behind already-passing
+unit coverage of the surrounding targeting and contact-damage modules.
+
+### Remaining risks
+
+- No interactive smoke test of manual tap-targeting or Speed-skill contact damage was performed this
+  session.
+
+### Recommended next action
+
+Stop after Phase Nine. The `getTargetedEnemy()` 30-branch manually-targetable-family membership chain
+remains a candidate for a future phase only if a concrete defect (e.g., a family that should be
+manually targetable but isn't) is demonstrated first — do not restructure it speculatively.
+
+### Build, branch, commit, and push status
+
+- Branch: `main`. Build: `339`. `SAVE_VERSION`: unchanged.
 - Commit hash and push result: recorded after commit below.
 
 ---

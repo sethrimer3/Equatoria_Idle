@@ -14,6 +14,7 @@ import {
   collectEnemyBodyTargets,
   findClosestEnemyFrom,
   getTargetedEnemy,
+  getTargetObject,
 } from './rpg-targeting-targets';
 
 export type { RpgTargetingCtx, RpgTargetingHandle, TargetCollectionOptions } from './rpg-targeting-types';
@@ -99,7 +100,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     getManualTargetedEnemy: () => {
       if (!targetedEnemy) return null;
       const resolved = getTargetedEnemy(ctx, targetedEnemy);
-      if (resolved && Object.values(resolved).some((value) => value === targetedEnemy)) return resolved;
+      if (resolved && getTargetObject(resolved) === targetedEnemy) return resolved;
       targetedEnemy = null;
       return null;
     },
@@ -107,19 +108,4 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     tryTargetEnemyAt,
     damageBodyTarget,
   };
-}
-
-function getTargetObject(target: ClosestTarget): object | null {
-  return target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void
-    ?? target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite
-    ?? target.amethyst ?? target.diamond ?? target.nullstone ?? target.fracteryl ?? target.eigenstein
-    ?? target.polyomino ?? target.fissilePolyomino ?? target.refractorPolyomino
-    ?? target.elite ?? target.alivenParticle ?? target.lifeCell ?? target.lifeCoreColony ?? target.boss
-    ?? target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk
-    ?? target.jellyfish ?? target.eliteJellyfish ?? target.clothGhost ?? target.plantTurret
-    ?? target.gearInsect ?? target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand
-    ?? target.sandFish ?? target.quartzFish ?? target.rubyFish ?? target.sunstoneFish
-    ?? target.emeraldFish ?? target.sapphireFish ?? target.amethystFish ?? target.diamondFish
-    ?? target.plantProj ?? target.verdurePlant ?? target.binaryRing ?? target.nadirCubePoint
-    ?? target.horizonPentagonReal ?? null;
 }
