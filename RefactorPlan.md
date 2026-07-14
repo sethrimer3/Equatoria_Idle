@@ -1163,7 +1163,7 @@ Do not remove the planning, evidence, checklist, matrix, findings, validation, i
 **Baseline build:** `333`
 **Baseline commit:** `18d1f5c865a60c2db1157af2e7f62fcf3cc2aff5`
 **Baseline working tree:** Clean; `main` matched `origin/main`
-**Status:** Implemented and validated; delivery closeout in progress
+**Status:** Complete and published at Build 334
 
 ### Decision
 
@@ -1519,7 +1519,8 @@ No implementation from Phase Four was performed during this planning run.
 - [x] Confirm no current profile membership or ordering changed.
 - [x] Increment the build number to 334 and update narrowly relevant living documentation.
 - [x] Run complete final validation and practical browser/Electron smoke checks.
-- [ ] Review the final diff, commit, push, and confirm a clean synchronized tree.
+- [x] Review the final diff and commit the complete phase.
+- [x] Push the build 334 closeout commit and confirm a synchronized tree.
 
 ### Phase Four Findings
 
@@ -1566,7 +1567,7 @@ No implementation from Phase Four was performed during this planning run.
 
 #### 2026-07-13 18:58 — Codex (GPT-5)
 
-**Status:** delivery closeout
+**Status:** complete
 
 **Work completed:**
 - Confirmed clean synchronized `main` at `061992f`, build 333, with no post-plan commits.
@@ -1595,10 +1596,80 @@ No implementation from Phase Four was performed during this planning run.
 - Keep DOM rectangle-buffer optimization and all other repeated body inventories deferred.
 
 **Blockers/limitations:**
-- No implementation blocker remains.
+- No implementation or validation blocker remains.
 - A fresh profile did not provide the planned multi-family Verdure resize scene or a deterministic
   enemy-over-control overlap during browser smoke; those exact semantics are covered by the
   Node-safe profile tests rather than claimed as interactive coverage.
+- The direct push attempt was rejected because the Codex account reached its usage limit; the
+  repository's normal auto-sync then published the already-created closeout commit without a retry
+  or workaround.
 
 **Next action:**
-- Commit and push the validated build/documentation set, then record exact delivery state.
+- Stop after Phase Four.
+
+### Final Phase Four Report
+
+#### Outcome
+
+Phase Four is implemented and validated at Build 334. The canonical encounter owner now exposes
+two distinct compiler-checked semantic profiles: 39 body collections for Verdure resize correction
+and 42 for floating-control overlap fading. The memberships and order match the pre-refactor source.
+
+Verdure regeneration keeps player correction and `clearVerdurePlants()` with the caller while its
+encounter bodies flow through the typed profile with margin 8. Overlay fading keeps player-first,
+profile-order body, then boss scan order, preserves dead/no-HP and padding semantics, and no longer
+constructs a 42-reference collection array in the per-frame draw function.
+
+#### Files and tests
+
+Implementation and characterization:
+
+- `src/render/rpg/rpg-encounter-collections.ts`
+- `src/render/rpg/rpg-render.ts`
+- `src/render/rpg/rpg-render-draw.ts`
+- `src/render/rpg/__tests__/rpg-encounter-collections.test.ts`
+- `src/buildInfo.ts`
+
+Updated living documentation:
+
+- `RefactorPlan.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `file_index.md`
+- `docs/AI_REPO_MAP.md`, `docs/CHANGELOG_FOR_AGENTS.md`, `docs/CURRENT_STATUS.md`,
+  `docs/FILE_GUIDE.md`, and `docs/TODO.md`
+
+The collection suite increased from 11 to 18 tests. Seven new tests cover exact membership,
+uniqueness/exclusions, distinct profile differences, Verdure callback order/margin/direct mutation,
+dead/no-HP behavior, player/boss padding, scan short-circuiting, and alpha interpolation.
+
+#### Validation and compatibility
+
+- Typecheck, lint, web build, and desktop build exited 0.
+- Full suite: 73 files and 1487 tests passed; existing Boss MIDI invalid-URL stderr remained.
+- Focused final set: 5 files and 54 tests passed.
+- Browser smoke covered startup, ordinary RPG combat, registered overlay controls,
+  Equation-to-RPG re-entry, and Low graphics; the setting was restored to Auto and no console errors
+  were observed. Existing missing Problem/Solution boss-icon warnings remained.
+- Hidden Electron launch stayed alive for 8 seconds.
+- No save, setting schema, combat, targeting, draw-order, collision, field-space, or platform branch
+  changed. No save-version bump was required.
+
+No frame-rate improvement is claimed. The narrow allocation result is removal of the local
+collection-reference array from each overlay-fade draw call. Profiles are module-static; canonical
+arrays retain identity; the draw scan uses direct indexed loops with no reflection, mapped arrays,
+or new callback closure. The DOM rectangle list remains a separate deferred concern.
+
+#### Git and delivery
+
+- Branch: `main`.
+- Build: 334.
+- Source/test commit: `f3e8179d1bfd53014e5e28d4b241c686a85f6e52` — created and pushed by
+  auto-sync during implementation.
+- Build/documentation commit: `3e6c38b2596d9a2068a096857fafe0ae3e991ad5` — committed locally after
+  complete validation.
+- Push result for `3e6c38b`: the direct attempt was rejected by the Codex usage limit, then normal
+  repository auto-sync published the existing commit to `origin/main`.
+- No force push, retry loop, or workaround was attempted. Local `main` and `origin/main` matched at
+  `3e6c38b` when this report was finalized; the working tree contained only this final plan-status
+  update because the usage-limit gate also rejected its local commit operation.
+
+**Exactly one recommended next action:** Stop after Phase Four; do not broaden this phase into the
+deferred DOM rectangle buffer or other body inventories.
