@@ -2409,3 +2409,52 @@ planning.
 > repository and phase instructions, add characterization tests before production changes, preserve
 > the exact current 37-participating/17-excluded Codex damage policy and all damage behavior, update
 > the plan throughout, validate fully, commit and push, and stop after Phase Six.
+
+### Implementation Report
+
+Implementation ran from clean `main` at `6f2a959` (Build 335), matching `origin/main`, ahead 0 /
+behind 0. Baseline `npm run typecheck`, `npm test` (74 files / 1493 tests), `npm run lint`,
+`npm run build`, and `npm run build:desktop` all passed at exit 0 before any change.
+
+Re-inventory of `createDamageFns()` confirmed the planning baseline exactly: 54 returned callbacks,
+37 participating in the reflective `typeByDamageFn` Codex map, 17 excluded, with the same names and
+type-id mappings recorded above. No intervening drift was found.
+
+`src/render/rpg/__tests__/rpg-damage-codex-policy.test.ts` was added first and run green against the
+original reflective implementation (10 tests): exhaustive 37/17-vs-54 classification; ordinary
+main-body scaling at multiplier 1 and >1; sapphire shield and bypass-shield signature; a polyomino
+representative (fissile split/flash preserved); a fish representative (sand fish); live per-hit
+multiplier lookup (no factory-time cache); omitted-getter fallback to multiplier 1; `onEnemyHit`
+positive/absorbed/shield-blocked hits; and explicit exclusions (`damageMissile`, `damageAmberShard`,
+`damageEliteEnemy`, `damageAlivenParticle`, `damageHorizonPentagonReal`) never calling the getter.
+
+`src/render/rpg/rpg-damage.ts` was then changed: added an exported `RpgDamageFns` interface naming
+all 54 callback signatures, and an exported `CODEX_DAMAGE_POLICY` typed record whose keys are exactly
+the 37 participating callback names (compiler-checked against `RpgDamageFns`) mapped to their
+existing Codex type ids. `createDamageFns()` now returns an `RpgDamageFns`-typed object composed with
+explicit callback properties: participating entries call a small `codexScale(typeId, rawDamage)`
+helper (reads `ctx.getCodexDamageMultiplier` live, `?? 1`) using direct `CODEX_DAMAGE_POLICY.<key>`
+property reads, then call the original named function; excluded entries are passed through as direct
+properties unchanged. The `Object.entries()` loop, the `keyof`/`(...args: unknown[])` casts, the
+`Record<string, unknown>` cast, and the post-construction `args[1]` mutation were removed entirely.
+
+Type design: `CODEX_DAMAGE_POLICY`'s key union is written out explicitly so any renamed/removed
+participating callback fails to compile against `RpgDamageFns`, and any typo in a wrapper's
+`CODEX_DAMAGE_POLICY.<key>` reference is a compile error rather than a silent runtime miss. The
+`codexScale` helper takes and returns a `number` only — no rest arguments, no per-hit object.
+
+Final validation: `npm run typecheck` exit 0; `npm test` exit 0 (75 files / 1503 tests, +1 file/+10
+tests from the new suite, all pre-existing tests still passing); `npm run lint` exit 0; `npm run build`
+exit 0 (same pre-existing chunk-size warning); `npm run build:desktop` exit 0 (same warning);
+`git diff --check` exit 0 (only a pre-existing, unrelated CRLF/LF notice on an untouched generated
+file). Focused matrix — the new Codex suite plus `horizon-pentagon-damage.test.ts`,
+`rpg-encounter-collections.test.ts`, `lens-tier2-effects.test.ts`, `lens-tier3-effects.test.ts`,
+`rpg-weapon-chain.test.ts`, and `life-zone.test.ts` — passed at 232/232. Source review confirmed no
+`Object.entries()`/`Object.keys()`, no `any`, no unsafe cast, and no per-hit rest array/object/closure
+remain in `rpg-damage.ts`. Browser and hidden Electron smoke were not run in this environment; no
+locked-scene, elite, ALIVEN, Life, Horizon, or boss coverage beyond the automated suites is claimed.
+
+`BUILD_NUMBER` was incremented from 335 to 336 in `src/buildInfo.ts`; `SAVE_VERSION` was not touched.
+No renderer context, targeting, weapon, orbit, readiness, lifecycle, collection-ownership,
+reset-profile, crafted post-hit hook, or save-data file was changed. No Phase Seven work was planned
+or begun.
