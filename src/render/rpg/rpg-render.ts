@@ -47,11 +47,14 @@ import { startBossIntro, onBossIntroCassetteStarted, onBossIntroCassetteDone, re
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import {
+  AOE_ELITE_FAMILY_KEY,
+  AOE_FAMILY_ROSTER,
   applyVerdureResizeBodyProfile,
   clearForBossEntry,
   clearForZoneSwitch,
   createRpgEncounterCollections,
 } from './rpg-encounter-collections';
+import type { AoeFamilyKey, RpgEncounterCollections } from './rpg-encounter-collections';
 import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
 import { getRecentComboEvents } from '../../dev/rpg-combat-event-log';
 import { createDamageFns } from './rpg-damage';
@@ -2393,30 +2396,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     devApplyStatusCombo(preset: string): void {
-      // Find nearest live enemy to the mote across all main arrays
-      type MinE = { x: number; y: number; hp: number };
-      const allArrays: MinE[][] = [
-        enemies as unknown as MinE[],
-        rubyEnemies as unknown as MinE[], emeraldEnemies as unknown as MinE[],
-        sapphireEnemies as unknown as MinE[], nullstoneEnemies as unknown as MinE[],
-        fracterylEnemies as unknown as MinE[], eigensteinEnemies as unknown as MinE[],
-        eliteEnemies as unknown as MinE[],
-      ];
-      let nearest: object | null = null;
-      let nearestDist = Infinity;
-      for (const arr of allArrays) {
-        for (const e of arr) {
-          if (e.hp <= 0) continue;
-          const dx = e.x - mote.x, dy = e.y - mote.y;
-          const d = dx * dx + dy * dy;
-          if (d < nearestDist) { nearestDist = d; nearest = e as object; }
-        }
-      }
-      if (bossEnemy && bossEnemy.hp > 0) {
-        const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
-        const d = dx * dx + dy * dy;
-        if (d < nearestDist) { nearest = bossEnemy as unknown as object; }
-      }
+      const nearest = findDevStatusComboNearestTarget(collections, mote, bossEnemy);
       if (!nearest) return;
 
       const base = { sourceTierId: 'ruby' as import('../../data/tiers').TierId, durationMs: 10000, magnitude: 50, tickEveryMs: 1000 };
@@ -2445,6 +2425,55 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
     },
   };
+}
+
+// ── Dev status-combo nearest-enemy search (module-level, testable) ────────────
+
+/**
+ * Fixed subset of `AOE_FAMILY_ROSTER` searched by `devApplyStatusCombo()`'s
+ * nearest-enemy lookup. This is intentionally a subset (Phase Eight) — the
+ * dev tool does not search the full 15-family AoE roster.
+ */
+const DEV_STATUS_COMBO_FAMILY_KEYS = [
+  'enemies', 'rubyEnemies', 'emeraldEnemies', 'sapphireEnemies',
+  'nullstoneEnemies', 'fracterylEnemies', 'eigensteinEnemies',
+] as const satisfies readonly AoeFamilyKey[];
+
+const DEV_STATUS_COMBO_FAMILY_KEY_SET: ReadonlySet<AoeFamilyKey> = new Set(DEV_STATUS_COMBO_FAMILY_KEYS);
+
+/**
+ * Find the nearest live enemy to `mote` across `devApplyStatusCombo()`'s
+ * fixed 8-family subset (7 `AOE_FAMILY_ROSTER` families plus `eliteEnemies`),
+ * with the live boss enemy taking precedence when it is strictly closer.
+ */
+export function findDevStatusComboNearestTarget(
+  collections: RpgEncounterCollections,
+  mote: { x: number; y: number },
+  bossEnemy: BossEnemy | null,
+): object | null {
+  let nearest: object | null = null;
+  let nearestDist = Infinity;
+  for (const { key } of AOE_FAMILY_ROSTER) {
+    if (!DEV_STATUS_COMBO_FAMILY_KEY_SET.has(key)) continue;
+    for (const e of collections[key]) {
+      if (e.hp <= 0) continue;
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d < nearestDist) { nearestDist = d; nearest = e; }
+    }
+  }
+  for (const e of collections[AOE_ELITE_FAMILY_KEY]) {
+    if (e.hp <= 0) continue;
+    const dx = e.x - mote.x, dy = e.y - mote.y;
+    const d = dx * dx + dy * dy;
+    if (d < nearestDist) { nearestDist = d; nearest = e; }
+  }
+  if (bossEnemy && bossEnemy.hp > 0) {
+    const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+    const d = dx * dx + dy * dy;
+    if (d < nearestDist) { nearest = bossEnemy as unknown as object; }
+  }
+  return nearest;
 }
 
 // ── Dev overlay update (module-level so rpg-render.ts calls it) ───────────────
