@@ -219,7 +219,8 @@ Major clusters:
 
 - constants and types: `rpg-constants.ts`, `rpg-weapon-constants.ts`, `rpg-enemy-constants.ts`, `rpg-types.ts`, `rpg-enemy-types.ts`, `rpg-entity-types.ts`.
 - encounter ownership: `rpg-encounter-collections.ts` is the canonical per-renderer array inventory,
-  factory, and boss/zone/restart profile source; do not add parallel clear lists.
+  factory, boss/zone/restart profile source, and typed Verdure-resize/overlay-fade body-profile
+  source; do not add parallel lifecycle or semantic membership lists.
 - factories: `rpg-factories.ts`, `rpg-factories-early.ts`, `rpg-factories-mid.ts`, `rpg-factories-late.ts`.
 - enemies: enemy update/draw modules, elite update/draw modules, Aliven modules.
 - player/weapons: player attack, projectiles, chain whip, sword, lasers, poison, missiles, mines, companion ships.

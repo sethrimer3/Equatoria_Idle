@@ -4,6 +4,23 @@ Lightweight log of architectural facts discovered and major structural changes. 
 
 ---
 
+## 2026-07-13 — Typed RPG encounter body profiles (build 334)
+
+**Agent:** Codex Phase Four implementation
+
+**Changed:**
+- Added distinct typed Verdure-resize and overlay-fade key profiles to the canonical encounter
+  collection module.
+- Verdure resize correction consumes the 39-key profile while retaining player and plant handling.
+- Overlay fading consumes the 42-key profile and no longer allocates a collection list per frame.
+
+**New invariants:**
+- Semantic profiles remain separate and preserve their exact characterized memberships and order.
+- Body-profile helpers are Node-safe; the hot draw path uses static keys and stable arrays without
+  reflection, mapped arrays, or callback allocation.
+
+---
+
 ## 2026-07-12 — Canonical RPG encounter collections (build 333)
 
 **Agent:** Codex Phase Three implementation

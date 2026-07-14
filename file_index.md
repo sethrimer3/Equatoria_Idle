@@ -1506,6 +1506,9 @@
 - Exports typed key tuples and explicit boss-entry, zone-switch, normal-restart, and boss-restart
   profiles. Nadir, Verdure, boss/MIDI, weapon, fluid, and player-effect specialized cleanup remains
   with its existing owner.
+- Build 334 adds distinct compiler-checked 39-key Verdure-resize and 42-key overlay-fade body
+  profiles. The Node-safe helpers preserve direct body mutation and living-body overlap semantics
+  without constructing a collection-reference array in the draw loop.
 
 ### src/render/rpg/rpg-render.ts *(updated — build 169)*
 - Independent RPG canvas rendering system for the RPG tab (~990 lines after this refactor).

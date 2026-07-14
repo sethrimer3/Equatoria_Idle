@@ -1163,7 +1163,7 @@ Do not remove the planning, evidence, checklist, matrix, findings, validation, i
 **Baseline build:** `333`
 **Baseline commit:** `18d1f5c865a60c2db1157af2e7f62fcf3cc2aff5`
 **Baseline working tree:** Clean; `main` matched `origin/main`
-**Status:** Proposed; do not implement during the planning run
+**Status:** Implemented and validated; delivery closeout in progress
 
 ### Decision
 
@@ -1503,3 +1503,102 @@ These instructions apply to Codex, Claude, and any repository-capable implementa
 | Unlocked special-zone/boss manual smoke | Not run | Fixture unavailable from clean checkout; not claimed |
 
 No implementation from Phase Four was performed during this planning run.
+
+### Phase Four Implementation Checklist
+
+- [x] Read current repository instructions, status, architecture, and this plan.
+- [x] Confirm branch, build, working tree, upstream state, and recent commits.
+- [x] Run baseline typecheck, tests, lint, web build, and desktop build.
+- [x] Add exact 39-key and 42-key membership characterization tests first.
+- [x] Record the expected red characterization result before production changes.
+- [x] Add compiler-checked Verdure-resize and overlay-fade profiles.
+- [x] Keep the profile helpers Node-safe and free of browser dependencies.
+- [x] Migrate Verdure resize correction without absorbing player or plant cleanup.
+- [x] Migrate overlay fading without a per-frame collection-list allocation.
+- [x] Add living/dead/no-HP, player, boss-padding, short-circuit, margin, and alpha tests.
+- [x] Confirm no current profile membership or ordering changed.
+- [x] Increment the build number to 334 and update narrowly relevant living documentation.
+- [x] Run complete final validation and practical browser/Electron smoke checks.
+- [ ] Review the final diff, commit, push, and confirm a clean synchronized tree.
+
+### Phase Four Findings
+
+- Current source still matched the planned 39-key Verdure and 42-key overlay memberships exactly.
+- The three overlay-only body families remain `binaryRingEnemies`, `nadirCubePointEnemies`, and
+  `stardustEnemies`; projectile, hazard, reward, effect, group-controller, and spawn collections
+  remain excluded from both profiles.
+- A mapped conditional type constrains each tuple key to canonical collections whose element type
+  satisfies the relevant structural body contract. No `any` or broad production cast was needed.
+- The Verdure consumer retains player correction before the profile pass, passes margin 8 for each
+  encounter body, uses the same scratch/push function, and calls `clearVerdurePlants()` afterward.
+- The overlay consumer retains player-first, profile-order body, then boss scan order; dead bodies
+  are skipped, missing `hp` remains living, body padding remains 10, and boss padding remains 18.
+- The first attempt to import the full draw module into the Node test exposed an existing
+  `DOMMatrix` browser dependency in `caustics-overlay.ts`. Moving the pure calculations into the
+  already Node-safe canonical module avoided a test shim and preserved dependency direction.
+- The draw path now iterates a module-static tuple and stable arrays. It creates no mapped body list,
+  callback closure, reflection result, or replacement collection per frame.
+
+### Phase Four Validation Results
+
+| Command / scenario | Exit / result | Classification |
+|---|---:|---|
+| Baseline `npm run typecheck` | 0 | Passed |
+| Baseline `npm test` | 0; 73 files, 1480 tests | Passed; existing Boss MIDI invalid-URL stderr remained |
+| Baseline `npm run lint` | 0 | Passed |
+| Baseline `npm run build` | 0; 441 modules | Passed with existing chunk-size warning |
+| Baseline `npm run build:desktop` | 0; 441 modules | Passed with existing chunk-size warning |
+| Pre-implementation semantic-profile test | 1; 2 failed, 11 passed | Expected red: both new exports were undefined |
+| Typed-profile focused test | 0; 13 tests | Passed |
+| Verdure migration focused set | 0; 3 files, 28 tests | Passed |
+| First overlay-helper focused set | 1; 4 files passed, 1 suite failed before tests | Environmental/design signal: importing draw reached Node-unavailable `DOMMatrix` |
+| Final Node-safe focused set | 0; 5 files, 54 tests | Passed |
+| Final `npm run typecheck` | 0 | Passed |
+| Final `npm test` | 0; 73 files, 1487 tests | Passed; existing Boss MIDI invalid-URL stderr remained |
+| Final `npm run lint` | 0 | Passed |
+| Final `npm run build` | 0; 441 modules | Passed with existing chunk-size warning |
+| Final `npm run build:desktop` | 0; 441 modules | Passed with existing chunk-size warning |
+| Browser smoke | Passed | Equatoria startup, ordinary RPG combat, Equation/RPG re-entry, overlay controls, and Low graphics; setting restored to Auto |
+| Browser console | No errors | Existing missing Problem/Solution boss-icon warnings remained |
+| Hidden Electron launch | Stayed alive for 8 seconds | Passed startup smoke |
+
+### Phase Four Work Log
+
+#### 2026-07-13 18:58 — Codex (GPT-5)
+
+**Status:** delivery closeout
+
+**Work completed:**
+- Confirmed clean synchronized `main` at `061992f`, build 333, with no post-plan commits.
+- Ran the complete baseline command set.
+- Added characterization tests first and recorded the expected red result.
+- Added two typed semantic profiles, narrow Node-safe helpers, and migrated the two consumers.
+- Added direct coverage for exact memberships, exclusions, profile order, direct mutation, margin,
+  dead/no-HP behavior, player/boss overlap, boss padding, short-circuiting, and alpha interpolation.
+- Updated build 334 and the affected status, map, file-guide/index, architecture, decision, TODO, and
+  agent-changelog entries.
+
+**Evidence/findings:**
+- No behavioral membership delta was needed or made.
+- The former 42-reference `enemyArrays` literal is absent from the per-frame draw function.
+- The first draw-module test import demonstrated why the pure helper belongs in the Node-safe
+  canonical module; no DOM shim was added.
+
+**Validation:**
+- Baseline full validation passed.
+- Expected red characterization and the intermediate `DOMMatrix` test-environment failure are
+  recorded above and were not called passing.
+- Final focused validation currently passes 54 tests across five files.
+
+**Behavioral decisions:**
+- Preserve all existing inclusions, exclusions, ordering, padding, margins, and specialized cleanup.
+- Keep DOM rectangle-buffer optimization and all other repeated body inventories deferred.
+
+**Blockers/limitations:**
+- No implementation blocker remains.
+- A fresh profile did not provide the planned multi-family Verdure resize scene or a deterministic
+  enemy-over-control overlap during browser smoke; those exact semantics are covered by the
+  Node-safe profile tests rather than claimed as interactive coverage.
+
+**Next action:**
+- Commit and push the validated build/documentation set, then record exact delivery state.

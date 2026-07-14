@@ -176,6 +176,9 @@ The Equation / Idle render uses a **fixed logical coordinate space** of 320 × 6
 - Boss entry, zone switching, normal restart, and boss restart use explicit typed reset profiles that
   truncate arrays in place. Specialized Verdure, Nadir, boss/MIDI, weapon, fluid, and player-effect
   cleanup remains outside the collection owner.
+- Verdure wall regeneration and floating-control overlap fading use separate typed semantic body
+  profiles from the same owner. The overlay profile is module-static, so the draw path scans stable
+  arrays directly instead of allocating a per-frame collection list.
 - `createRpgRender()` separately owns input state, weapon timers and internals, companion ships,
   scalar wave/boss/player state, terrain, audio hooks, and the RPG stats panel DOM
 - Persistent RPG progression lives in `RpgSimState`; equipped weapon ids and weapon tiers are read from sim state rather than duplicated in rendering code

@@ -136,6 +136,8 @@ Remaining before first Play submission (see ANDROID_RELEASE.md):
 
 ## Completed or superseded references
 
+- [x] Build 334: typed canonical Verdure-resize and overlay-fade body profiles, with the overlay
+  collection inventory moved out of the per-frame draw path.
 - [x] Build 333: canonical renderer-local RPG encounter collections, explicit typed boss/zone/restart profiles, shared broad-context references, and stale-Stardust restart correction.
 - [x] Build 332: one explicit `AppRuntime` owns loop, listeners, interval, input, callbacks, audio/effects, panels, RPG teardown, and DOM cleanup.
 - [x] Build 298: Quartz boss signature beat missile with three beat-locked split iterations and damaging thick trails.

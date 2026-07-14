@@ -1,5 +1,16 @@
 # Equatoria Idle Current Status
 
+## Build 334: typed RPG encounter body profiles
+
+- The canonical encounter owner now exports separate compiler-checked 39-key Verdure-resize and
+  42-key overlay-fade body profiles.
+- Verdure wall regeneration applies its existing position/velocity correction through the resize
+  profile while player correction and specialized plant cleanup remain caller-owned.
+- Floating-control overlap scans use the overlay profile without constructing a collection-reference
+  array every draw frame; player, boss, dead-body, padding, and alpha behavior is unchanged.
+- Node-safe characterization coverage verifies exact membership, exclusions, ordering, direct body
+  mutation, living-body rules, short-circuiting, and fade interpolation.
+
 ## Build 333: canonical RPG encounter collections
 
 - `createRpgRender()` now creates one canonical `RpgEncounterCollections` object with 74 fresh,
@@ -36,8 +47,8 @@
 - Each save profile owns a reconciled shuffled tip deck; disabled tips do not consume the deck.
 - Gameplay settings now include the default-enabled `Show tip on startup` option.
 
-Last updated: 2026-07-12
-Current build: 333
+Last updated: 2026-07-13
+Current build: 334
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 

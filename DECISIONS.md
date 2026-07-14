@@ -31,6 +31,12 @@ profile plus the existing boss lifecycle.
 state, weapon internals, orbit/afterimage state, combo/ward effects, audio, DOM, and saves remain
 outside this owner. Cleanup that does more than truncation remains specialized.
 
+**Semantic body profiles** (build 334): Verdure resize correction and floating-control overlap
+fading use separate compiler-checked key tuples on the canonical owner. Their memberships remain
+intentionally different. The overlay scan iterates the module-static tuple directly, preserving
+short-circuit order while removing the prior per-frame array of collection references. Player,
+boss, wall, and plant-specific behavior remains with the existing callers.
+
 ## RPG Render Coordinate System
 
 **Decision** (build 129): The RPG gameplay arena uses a **fixed** logical coordinate space of **360 × 640** px (9:16 aspect ratio).
