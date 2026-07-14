@@ -70,7 +70,98 @@ export interface DamageCtx {
   onEnemyHit?(enemy: { x: number; y: number; hp: number; maxHp: number }, dmg: number, blocked: boolean): void;
 }
 
-export function createDamageFns(ctx: DamageCtx) {
+/** Exact typed contract for the 54 callbacks returned by createDamageFns(). */
+export interface RpgDamageFns {
+  damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageSapphireEnemy(enemy: SapphireEnemy, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number;
+  damageMissile(missile: SapphireMissile, rawDamage: number): number;
+  damageEmeraldEnemy(enemy: EmeraldEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageAmberEnemy(enemy: AmberEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageAmberShard(shard: AmberShard, rawDamage: number): number;
+  damageVoidEnemy(enemy: VoidEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageQuartzEnemy(enemy: QuartzEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageQuartzSpike(spike: QuartzSpike, rawDamage: number): number;
+  damageRubyEnemy(enemy: RubyEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageRubyBolt(bolt: RubyBolt, rawDamage: number): number;
+  damageSunstoneEnemy(enemy: SunstoneEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageCitrineEnemy(enemy: CitrineEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageCitrineBolt(bolt: CitrineBolt, rawDamage: number): number;
+  damageIoliteEnemy(enemy: IoliteEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageAmethystEnemy(enemy: AmethystEnemy, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number;
+  damageAmethystShard(shard: AmethystShard, rawDamage: number): number;
+  damageDiamondEnemy(enemy: DiamondEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageDiamondShard(shard: DiamondShard, rawDamage: number): number;
+  damageNullstoneEnemy(enemy: NullstoneEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageVoidTendril(tendril: VoidTendril, rawDamage: number): number;
+  damageFracterylEnemy(enemy: FracterylEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageFracterylShard(shard: FracterylShard, rawDamage: number): number;
+  damageEigensteinEnemy(enemy: EigensteinEnemy, rawDamage: number, defPierceRatio: number): number;
+  damagePolyominoEnemy(enemy: PolyominoEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageFissilePolyominoEnemy(enemy: FissilePolyominoEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageRefractorPolyominoEnemy(enemy: RefractorPolyominoEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageBinaryRingEnemy(enemy: BinaryRingEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageNadirCubePointEnemy(e: NadirCubePointEnemy, raw: number, pierce: number): number;
+  damageEliteEnemy(enemy: EliteEnemy, rawDamage: number, defPierceRatio: number): number;
+  damageAlivenParticle(
+    particle: AlivenParticle,
+    group: AlivenParticleGroup,
+    rawDamage: number,
+    recordDps: (dmg: number, color?: string) => void,
+  ): number;
+  damageDustWispEnemy(e: DustWispEnemy, raw: number, pierce: number): number;
+  damageRibbonWormEnemy(e: RibbonWormEnemy, raw: number, pierce: number): number;
+  damageLanternMothEnemy(e: LanternMothEnemy, raw: number, pierce: number): number;
+  damageEyeStalkEnemy(e: EyeStalkEnemy, raw: number, pierce: number): number;
+  damageJellyfishEnemy(e: JellyfishEnemy, raw: number, pierce: number): number;
+  damageEliteJellyfishEnemy(e: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy, raw: number, pierce: number): number;
+  damageClothGhostEnemy(e: ClothGhostEnemy, raw: number, pierce: number): number;
+  damagePlantTurretEnemy(e: PlantTurretEnemy, raw: number, pierce: number): number;
+  damageGearInsectEnemy(e: GearInsectEnemy, raw: number, pierce: number): number;
+  damageSpiderCrawlerEnemy(e: SpiderCrawlerEnemy, raw: number, pierce: number): number;
+  damageMoteSwarmEnemy(e: MoteSwarmEnemy, raw: number, pierce: number): number;
+  damageShadowHandEnemy(e: ShadowHandEnemy, raw: number, pierce: number): number;
+  damageSandFishEnemy(e: SandFishEnemy, raw: number, pierce: number): number;
+  damageQuartzFishEnemy(e: QuartzFishEnemy, raw: number, pierce: number, bypassShield: boolean): number;
+  damageRubyFishEnemy(e: RubyFishEnemy, raw: number, pierce: number): number;
+  damageSunstoneFishEnemy(e: SunstoneFishEnemy, raw: number, pierce: number): number;
+  damageEmeraldFishEnemy(e: EmeraldFishEnemy, raw: number, pierce: number): number;
+  damageSapphireFishEnemy(e: SapphireFishEnemy, raw: number, pierce: number): number;
+  damageAmethystFishEnemy(e: AmethystFishEnemy, raw: number, pierce: number): number;
+  damageDiamondFishEnemy(e: DiamondFishEnemy, raw: number, pierce: number): number;
+  damagePlantProjectile(p: PlantProjectile, rawDamage: number): number;
+  damageHorizonPentagonReal(g: HorizonPentagonGroup, rawDamage: number, defPierceRatio: number): number;
+  damageHorizonMissile(m: HorizonMissile, rawDamage: number, _pierce: number): number;
+}
+
+/** Exact typed Codex damage-multiplier policy: the 37 participating callbacks and their type ids. */
+export const CODEX_DAMAGE_POLICY: Readonly<Record<
+  'damageEnemy' | 'damageSapphireEnemy' | 'damageEmeraldEnemy' | 'damageAmberEnemy' | 'damageVoidEnemy' |
+  'damageQuartzEnemy' | 'damageRubyEnemy' | 'damageSunstoneEnemy' | 'damageCitrineEnemy' | 'damageIoliteEnemy' |
+  'damageAmethystEnemy' | 'damageDiamondEnemy' | 'damageNullstoneEnemy' | 'damageFracterylEnemy' |
+  'damageEigensteinEnemy' | 'damagePolyominoEnemy' | 'damageFissilePolyominoEnemy' |
+  'damageRefractorPolyominoEnemy' | 'damageDustWispEnemy' | 'damageRibbonWormEnemy' | 'damageLanternMothEnemy' |
+  'damageEyeStalkEnemy' | 'damageJellyfishEnemy' | 'damageClothGhostEnemy' | 'damagePlantTurretEnemy' |
+  'damageGearInsectEnemy' | 'damageSpiderCrawlerEnemy' | 'damageMoteSwarmEnemy' | 'damageShadowHandEnemy' |
+  'damageSandFishEnemy' | 'damageQuartzFishEnemy' | 'damageRubyFishEnemy' | 'damageSunstoneFishEnemy' |
+  'damageEmeraldFishEnemy' | 'damageSapphireFishEnemy' | 'damageAmethystFishEnemy' | 'damageDiamondFishEnemy',
+  string
+>> = {
+  damageEnemy: 'laser', damageSapphireEnemy: 'sapphire', damageEmeraldEnemy: 'emerald',
+  damageAmberEnemy: 'amber', damageVoidEnemy: 'void', damageQuartzEnemy: 'quartz',
+  damageRubyEnemy: 'ruby', damageSunstoneEnemy: 'sunstone', damageCitrineEnemy: 'citrine',
+  damageIoliteEnemy: 'iolite', damageAmethystEnemy: 'amethyst', damageDiamondEnemy: 'diamond',
+  damageNullstoneEnemy: 'nullstone', damageFracterylEnemy: 'fracteryl', damageEigensteinEnemy: 'eigenstein',
+  damagePolyominoEnemy: 'polyomino', damageFissilePolyominoEnemy: 'fissile_polyomino',
+  damageRefractorPolyominoEnemy: 'refractor_polyomino', damageDustWispEnemy: 'dust_wisp',
+  damageRibbonWormEnemy: 'ribbon_worm', damageLanternMothEnemy: 'lantern_moth', damageEyeStalkEnemy: 'eye_stalk',
+  damageJellyfishEnemy: 'jellyfish', damageClothGhostEnemy: 'cloth_ghost', damagePlantTurretEnemy: 'plant_turret',
+  damageGearInsectEnemy: 'gear_insect', damageSpiderCrawlerEnemy: 'spider_crawler', damageMoteSwarmEnemy: 'mote_swarm',
+  damageShadowHandEnemy: 'shadow_hand', damageSandFishEnemy: 'sand_fish', damageQuartzFishEnemy: 'quartz_fish',
+  damageRubyFishEnemy: 'ruby_fish', damageSunstoneFishEnemy: 'sunstone_fish', damageEmeraldFishEnemy: 'emerald_fish',
+  damageSapphireFishEnemy: 'sapphire_fish', damageAmethystFishEnemy: 'amethyst_fish', damageDiamondFishEnemy: 'diamond_fish',
+};
+
+export function createDamageFns(ctx: DamageCtx): RpgDamageFns {
   const { recordDps } = ctx;
 
   /** Deals damage from the player to one laser enemy, respecting DEF and a DEF pierce ratio.
@@ -505,84 +596,86 @@ export function createDamageFns(ctx: DamageCtx) {
     return dmg;
   }
 
-  const damageFns = {
-    damageEnemy,
-    damageSapphireEnemy,
+  /** Scales a raw-damage argument by the live Codex multiplier for the given type id, or 1 if absent. */
+  function codexScale(typeId: string, rawDamage: number): number {
+    return rawDamage * (ctx.getCodexDamageMultiplier?.(typeId) ?? 1);
+  }
+
+  const damageFns: RpgDamageFns = {
+    damageEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageEnemy, rawDamage), defPierceRatio),
+    damageSapphireEnemy: (enemy, rawDamage, defPierceRatio, bypassShield) =>
+      damageSapphireEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageSapphireEnemy, rawDamage), defPierceRatio, bypassShield),
     damageMissile,
-    damageEmeraldEnemy,
-    damageAmberEnemy,
+    damageEmeraldEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageEmeraldEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageEmeraldEnemy, rawDamage), defPierceRatio),
+    damageAmberEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageAmberEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageAmberEnemy, rawDamage), defPierceRatio),
     damageAmberShard,
-    damageVoidEnemy,
-    damageQuartzEnemy,
+    damageVoidEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageVoidEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageVoidEnemy, rawDamage), defPierceRatio),
+    damageQuartzEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageQuartzEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageQuartzEnemy, rawDamage), defPierceRatio),
     damageQuartzSpike,
-    damageRubyEnemy,
+    damageRubyEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageRubyEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageRubyEnemy, rawDamage), defPierceRatio),
     damageRubyBolt,
-    damageSunstoneEnemy,
-    damageCitrineEnemy,
+    damageSunstoneEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageSunstoneEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageSunstoneEnemy, rawDamage), defPierceRatio),
+    damageCitrineEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageCitrineEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageCitrineEnemy, rawDamage), defPierceRatio),
     damageCitrineBolt,
-    damageIoliteEnemy,
-    damageAmethystEnemy,
+    damageIoliteEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageIoliteEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageIoliteEnemy, rawDamage), defPierceRatio),
+    damageAmethystEnemy: (enemy, rawDamage, defPierceRatio, bypassShield) =>
+      damageAmethystEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageAmethystEnemy, rawDamage), defPierceRatio, bypassShield),
     damageAmethystShard,
-    damageDiamondEnemy,
+    damageDiamondEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageDiamondEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageDiamondEnemy, rawDamage), defPierceRatio),
     damageDiamondShard,
-    damageNullstoneEnemy,
+    damageNullstoneEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageNullstoneEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageNullstoneEnemy, rawDamage), defPierceRatio),
     damageVoidTendril,
-    damageFracterylEnemy,
+    damageFracterylEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageFracterylEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageFracterylEnemy, rawDamage), defPierceRatio),
     damageFracterylShard,
-    damageEigensteinEnemy,
-    damagePolyominoEnemy,
-    damageFissilePolyominoEnemy,
-    damageRefractorPolyominoEnemy,
+    damageEigensteinEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageEigensteinEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageEigensteinEnemy, rawDamage), defPierceRatio),
+    damagePolyominoEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damagePolyominoEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damagePolyominoEnemy, rawDamage), defPierceRatio),
+    damageFissilePolyominoEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageFissilePolyominoEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageFissilePolyominoEnemy, rawDamage), defPierceRatio),
+    damageRefractorPolyominoEnemy: (enemy, rawDamage, defPierceRatio) =>
+      damageRefractorPolyominoEnemy(enemy, codexScale(CODEX_DAMAGE_POLICY.damageRefractorPolyominoEnemy, rawDamage), defPierceRatio),
     damageBinaryRingEnemy,
     damageNadirCubePointEnemy,
     damageEliteEnemy,
     damageAlivenParticle,
-    damageDustWispEnemy,
-    damageRibbonWormEnemy,
-    damageLanternMothEnemy,
-    damageEyeStalkEnemy,
-    damageJellyfishEnemy,
+    damageDustWispEnemy: (e, raw, pierce) => damageDustWispEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageDustWispEnemy, raw), pierce),
+    damageRibbonWormEnemy: (e, raw, pierce) => damageRibbonWormEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageRibbonWormEnemy, raw), pierce),
+    damageLanternMothEnemy: (e, raw, pierce) => damageLanternMothEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageLanternMothEnemy, raw), pierce),
+    damageEyeStalkEnemy: (e, raw, pierce) => damageEyeStalkEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageEyeStalkEnemy, raw), pierce),
+    damageJellyfishEnemy: (e, raw, pierce) => damageJellyfishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageJellyfishEnemy, raw), pierce),
     damageEliteJellyfishEnemy,
-    damageClothGhostEnemy,
-    damagePlantTurretEnemy,
-    damageGearInsectEnemy,
-    damageSpiderCrawlerEnemy,
-    damageMoteSwarmEnemy,
-    damageShadowHandEnemy,
-    damageSandFishEnemy,
-    damageQuartzFishEnemy,
-    damageRubyFishEnemy,
-    damageSunstoneFishEnemy,
-    damageEmeraldFishEnemy,
-    damageSapphireFishEnemy,
-    damageAmethystFishEnemy,
-    damageDiamondFishEnemy,
+    damageClothGhostEnemy: (e, raw, pierce) => damageClothGhostEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageClothGhostEnemy, raw), pierce),
+    damagePlantTurretEnemy: (e, raw, pierce) => damagePlantTurretEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damagePlantTurretEnemy, raw), pierce),
+    damageGearInsectEnemy: (e, raw, pierce) => damageGearInsectEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageGearInsectEnemy, raw), pierce),
+    damageSpiderCrawlerEnemy: (e, raw, pierce) => damageSpiderCrawlerEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageSpiderCrawlerEnemy, raw), pierce),
+    damageMoteSwarmEnemy: (e, raw, pierce) => damageMoteSwarmEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageMoteSwarmEnemy, raw), pierce),
+    damageShadowHandEnemy: (e, raw, pierce) => damageShadowHandEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageShadowHandEnemy, raw), pierce),
+    damageSandFishEnemy: (e, raw, pierce) => damageSandFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageSandFishEnemy, raw), pierce),
+    damageQuartzFishEnemy: (e, raw, pierce, bypassShield) =>
+      damageQuartzFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageQuartzFishEnemy, raw), pierce, bypassShield),
+    damageRubyFishEnemy: (e, raw, pierce) => damageRubyFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageRubyFishEnemy, raw), pierce),
+    damageSunstoneFishEnemy: (e, raw, pierce) => damageSunstoneFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageSunstoneFishEnemy, raw), pierce),
+    damageEmeraldFishEnemy: (e, raw, pierce) => damageEmeraldFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageEmeraldFishEnemy, raw), pierce),
+    damageSapphireFishEnemy: (e, raw, pierce) => damageSapphireFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageSapphireFishEnemy, raw), pierce),
+    damageAmethystFishEnemy: (e, raw, pierce) => damageAmethystFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageAmethystFishEnemy, raw), pierce),
+    damageDiamondFishEnemy: (e, raw, pierce) => damageDiamondFishEnemy(e, codexScale(CODEX_DAMAGE_POLICY.damageDiamondFishEnemy, raw), pierce),
     damagePlantProjectile,
     damageHorizonPentagonReal,
     damageHorizonMissile,
   };
-  const typeByDamageFn: Record<string, string> = {
-    damageEnemy: 'laser', damageSapphireEnemy: 'sapphire', damageEmeraldEnemy: 'emerald',
-    damageAmberEnemy: 'amber', damageVoidEnemy: 'void', damageQuartzEnemy: 'quartz',
-    damageRubyEnemy: 'ruby', damageSunstoneEnemy: 'sunstone', damageCitrineEnemy: 'citrine',
-    damageIoliteEnemy: 'iolite', damageAmethystEnemy: 'amethyst', damageDiamondEnemy: 'diamond',
-    damageNullstoneEnemy: 'nullstone', damageFracterylEnemy: 'fracteryl', damageEigensteinEnemy: 'eigenstein',
-    damagePolyominoEnemy: 'polyomino', damageFissilePolyominoEnemy: 'fissile_polyomino',
-    damageRefractorPolyominoEnemy: 'refractor_polyomino', damageDustWispEnemy: 'dust_wisp',
-    damageRibbonWormEnemy: 'ribbon_worm', damageLanternMothEnemy: 'lantern_moth', damageEyeStalkEnemy: 'eye_stalk',
-    damageJellyfishEnemy: 'jellyfish', damageClothGhostEnemy: 'cloth_ghost', damagePlantTurretEnemy: 'plant_turret',
-    damageGearInsectEnemy: 'gear_insect', damageSpiderCrawlerEnemy: 'spider_crawler', damageMoteSwarmEnemy: 'mote_swarm',
-    damageShadowHandEnemy: 'shadow_hand', damageSandFishEnemy: 'sand_fish', damageQuartzFishEnemy: 'quartz_fish',
-    damageRubyFishEnemy: 'ruby_fish', damageSunstoneFishEnemy: 'sunstone_fish', damageEmeraldFishEnemy: 'emerald_fish',
-    damageSapphireFishEnemy: 'sapphire_fish', damageAmethystFishEnemy: 'amethyst_fish', damageDiamondFishEnemy: 'diamond_fish',
-  };
-  for (const [fnName, typeId] of Object.entries(typeByDamageFn)) {
-    const original = damageFns[fnName as keyof typeof damageFns] as (...args: unknown[]) => unknown;
-    (damageFns as Record<string, unknown>)[fnName] = (...args: unknown[]) => {
-      args[1] = Number(args[1]) * (ctx.getCodexDamageMultiplier?.(typeId) ?? 1);
-      return original(...args);
-    };
-  }
   return damageFns;
 
   function damageHorizonPentagonReal(g: HorizonPentagonGroup, rawDamage: number, defPierceRatio: number): number {
