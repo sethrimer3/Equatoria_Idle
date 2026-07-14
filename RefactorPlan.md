@@ -2,28 +2,25 @@
 
 **Repository:** `sethrimer3/Equatoria_Idle`  
 **Baseline branch:** `main`  
-**Baseline build:** `332`  
-**Baseline lifecycle commit:** `938315712323aeedbe957a92fac7647eff8670c3`  
-**Status:** Phase Three complete; Phase Four proposed (planning only)
+**Current planning build:** `334`
+**Current planning baseline:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
+**Status:** Phases One through Four complete; Phase Five planned (planning only)
 **Compatible agents:** Codex, Claude, or another repository-capable coding agent
 
 ---
 
 ## Decision
 
-A further refactor phase is productive.
+A further narrow refactor phase is justified after closing Phase Four.
 
-The next phase should establish a canonical owner for the RPG combat encounter's mutable entity collections and replace independently maintained reset lists with explicit, tested reset profiles.
+The active phase is Phase Five, “Canonical Attack Context and Readiness Policy.” It should align
+the two remaining top-level attack contexts with the canonical encounter owner and characterize the
+existing boolean target-readiness gate without changing its membership or combat behavior.
 
-Tentative module:
-
-`src/render/rpg/rpg-encounter-collections.ts`
-
-The active RPG renderer owns many separate arrays for enemies, projectiles, procedural creatures, special encounters, boss effects, spawn entries, drops, and combat transients. Those collections are repeated independently across update, draw, targeting, wave, boss-entry, zone-switch, and death/restart contracts.
-
-This creates a concrete maintenance risk: adding an enemy or projectile family requires remembering every declaration, context, updater, renderer, targeting path, completion check, and reset path. Existing reset paths already differ in ways that may be intentional or may represent drift. Characterize those differences before normalizing them.
-
-This phase is an ownership and correctness refactor. It is not a combat redesign, performance rewrite, ECS conversion, or broad `rpg-render.ts` decomposition.
+The completed Phase Three collection-owner plan and Phase Four typed spatial-profile plan remain
+below as historical evidence and must not be repeated. The fully developed Phase Five scope,
+characterization matrix, risks, validation, and model-neutral instructions are at the end of this
+document.
 
 ---
 
@@ -1665,11 +1662,397 @@ or new callback closure. The DOM rectangle list remains a separate deferred conc
   auto-sync during implementation.
 - Build/documentation commit: `3e6c38b2596d9a2068a096857fafe0ae3e991ad5` — committed locally after
   complete validation.
+- Report-only closeout commit: `803794089bc6c46fae7e231bf60e913b5e0ccfab` — repository auto-sync
+  committed and published the final Phase Four status, work log, validation summary, and delivery
+  report without changing implementation.
 - Push result for `3e6c38b`: the direct attempt was rejected by the Codex usage limit, then normal
   repository auto-sync published the existing commit to `origin/main`.
-- No force push, retry loop, or workaround was attempted. Local `main` and `origin/main` matched at
-  `3e6c38b` when this report was finalized; the working tree contained only this final plan-status
-  update because the usage-limit gate also rejected its local commit operation.
+- No force push, retry loop, or workaround was attempted. The later closeout audit confirmed local
+  `main` and `origin/main` matched at `8037940`, with zero ahead/behind divergence and a clean
+  working tree.
 
 **Exactly one recommended next action:** Stop after Phase Four; do not broaden this phase into the
 deferred DOM rectangle buffer or other body inventories.
+
+### Phase Four Closeout Audit — 2026-07-13
+
+- `8037940` changes only `RefactorPlan.md` (76 insertions, 5 deletions) and is the report-only
+  closeout that the previous run could not commit directly.
+- `f3e8179` contains only the four Phase Four source/test files. `3e6c38b` contains Build 334 and the
+  relevant architecture/status/documentation updates. `src/buildInfo.ts` is 333 at `f3e8179` and
+  334 at `3e6c38b` and `8037940`.
+- The report accurately records 73 test files and 1487 tests, the existing Boss MIDI invalid-URL
+  stderr, 441-module web and desktop builds, focused coverage, browser limitations, and the hidden
+  Electron startup check.
+- Current reproducible validation reconfirmed typecheck, lint, 73 files/1487 tests, web build, and
+  desktop build at exit 0. The first restricted `npm test` attempt failed before config load with
+  the known sandbox/esbuild directory-access error; the approved rerun passed and is the result
+  used for validation.
+- Remaining Phase Four risk is unchanged: the fresh browser profile did not provide deterministic
+  multi-family Verdure-resize or enemy-over-control scenes. Exact membership and spatial semantics
+  remain covered by Node tests; no broader interactive coverage is claimed.
+- Closeout status before Phase Five planning: `main` and `origin/main` both at `8037940`, ahead 0,
+  behind 0, clean working tree, Build 334.
+
+---
+
+## Phase Five — Canonical Attack Context and Readiness Policy
+
+**Planning baseline date:** 2026-07-13
+**Baseline branch:** `main`
+**Baseline build:** `334`
+**Baseline commit:** `803794089bc6c46fae7e231bf60e913b5e0ccfab`
+**Baseline working tree:** Clean; `main` matched `origin/main`
+**Status:** Planned only; do not implement during the planning run
+
+### Decision
+
+Another narrowly scoped, behavior-preserving phase is justified.
+
+Phase Five should align the two remaining top-level attack contexts with the canonical encounter
+collection owner and extract the existing pre-attack “any target exists” decision into one typed,
+Node-safe readiness policy. This addresses concrete duplicated ownership wiring and an untested
+gameplay gate. It does not justify decomposing files because they are large.
+
+This phase is distinct from completed Phases One through Four:
+
+- Phase One owns demand-driven trace-overlay frame scheduling.
+- Phase Two owns application runtime teardown and replacement.
+- Phase Three owns the 74 encounter arrays and lifecycle reset profiles.
+- Phase Four owns Verdure-resize and overlay-fade spatial body profiles.
+- Phase Five is limited to the collection dependency boundary used to create weapon/attack
+  contexts and the boolean policy that allows an attack dispatch to proceed.
+
+### Current-Code Evidence
+
+#### Two broad contexts redeclare the canonical collection inventory
+
+`src/render/rpg/rpg-weapon-systems.ts::RpgWeaponCtx` begins at line 68. Of its 132 declared
+members, 55 are fields already owned by `RpgEncounterCollections` (54 enemy/body collections plus
+`hitEffects`). The duplicated block is currently authored at lines 85–143.
+
+`src/render/rpg/rpg-player-attack.ts::RpgPlayerAttackCtx` begins at line 52. Of its 132 declared
+members, 54 are canonical encounter collection fields. The duplicated collection block is at lines
+63–118. The two interfaces share 116 member names overall, but this phase must address only the
+canonical collection portion; their other callbacks and state have different consumers and should
+not be generalized.
+
+`src/render/rpg/rpg-render.ts` independently lists these references again when constructing
+`weaponCtx` at line 1412 and `playerAttackCtx` at line 1499. The renderer already has the single
+`collections` object created by Phase Three, so these hand-written property lists are ownership
+aliases rather than separate state. A future collection rename or addition can compile in the
+canonical owner while either attack context silently retains an older inventory.
+
+#### Attack dispatch has a separate untested family inventory
+
+`src/render/rpg/rpg-player-attack.ts::performWeaponAttack()` uses a manual early-return policy at
+lines 249–288:
+
+- a 51-field destructuring list;
+- direct length addition for 50 of those collections;
+- a nested count of living particles in `alivenGroups`;
+- a separate `horizonPentagonGroups.length` term; and
+- a separate nullable boss term.
+
+Expressed as collection classification, current behavior considers 52 canonical collection keys:
+50 direct-length collections, `alivenGroups` with nested `isAlive` semantics, and
+`horizonPentagonGroups`. The boss remains scalar and outside the canonical owner.
+
+The guard is gameplay-significant: if it returns zero, no attack handler runs. Yet there is no
+focused test for exact family membership, ALIVEN liveness, Horizon, boss handling, or empty-state
+short-circuiting. `stardustEnemies` and `lifeColonies` are present on `RpgPlayerAttackCtx` but are
+not counted by this guard. That difference is suspicious, not proven defective. Preserve it in
+this refactor unless a separate failing regression and repository/gameplay evidence establish the
+intended behavioral correction.
+
+#### Existing canonical seam and test gap
+
+`src/render/rpg/rpg-encounter-collections.ts::RpgEncounterCollections` already provides the
+Node-safe, stable-reference owner. Draw, targeting, wave, update, and restart contexts already
+carry the canonical object, and the Phase Three wiring test checks those consumers. The top-level
+weapon and player-attack contexts are the two explicitly deferred mechanical migrations that are
+not included in that wiring test.
+
+Existing `lens-tier2-effects.test.ts`, `lens-tier3-effects.test.ts`, `rpg-weapon-chain.test.ts`,
+`life-zone.test.ts`, and the encounter-collection suite exercise nearby attack and target behavior,
+but none characterizes the readiness guard as its own policy.
+
+### Objective
+
+Create one explicit canonical collection dependency at each top-level attack context and one pure,
+typed readiness helper that preserves the current attack-dispatch decision exactly.
+
+The intended result is:
+
+- `RpgWeaponCtx` and `RpgPlayerAttackCtx` no longer manually redeclare canonical collection field
+  types;
+- both contexts retain the same canonical owner and stable array references created by
+  `createRpgRender()`;
+- existing direct property access remains available to current attack/weapon consumers without a
+  broad submodule rewrite;
+- the renderer no longer hand-wires two separate canonical collection inventories;
+- the attack readiness membership and special cases are named, classified, and Node-tested; and
+- no attack, damage, target selection, ordering, allocation, or gameplay behavior changes.
+
+### Behavioral Contract
+
+Preserve exactly:
+
+- equipped-weapon resolution and early returns for delegated weapon kinds;
+- the readiness guard's position in `performWeaponAttack()`;
+- the 52 currently participating collection keys;
+- direct-length semantics for the current ordinary, projectile, elite, special, procedural, fish,
+  and Horizon collections;
+- ALIVEN participation only when at least one nested particle has `isAlive === true`;
+- boss participation according to the current nullable-presence rule, without adding a new HP
+  filter;
+- the current non-participation of Stardust, Life colonies, Nadir entities, encounter effects,
+  rewards, spawn queue, and other excluded collections;
+- all single, multi, AoE, piercing, companion, projectile, mine, laser, vortex, chain, sword, and
+  crafted post-hit dispatch behavior;
+- stable array identity before and after reset profiles;
+- damage attribution, wave completion, status, reward, and fluid side effects;
+- Node-test compatibility, browser/Electron/Android behavior, save data, and settings.
+
+Do not treat suspicious readiness exclusions as permission for a behavior fix. Any correction must
+be proposed separately after a failing behavior test demonstrates the defect and intended result.
+
+### Proposed Ownership Boundary
+
+The existing `RpgEncounterCollections` object remains the only owner of encounter arrays.
+
+Preferred mechanical shape:
+
+```ts
+export interface RpgWeaponCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
+  // existing non-collection dependencies remain explicit
+}
+
+export interface RpgPlayerAttackCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
+  // existing non-collection dependencies remain explicit
+}
+```
+
+`createRpgRender()` may construct each context once with `collections` plus the stable direct
+aliases (for example, `collections, ...collections`) if TypeScript excess-property and getter
+semantics remain clear. This one-time object composition is not a per-frame collection allocation.
+Do not create per-frame mapped views, proxies, dynamic getters, or a second collection owner.
+
+The readiness policy should live with attack dispatch, preferably in a small Node-safe sibling such
+as `rpg-player-attack-readiness.ts`, rather than adding attack semantics to the neutral lifecycle
+owner. It may export a compiler-checked static tuple and a pure helper such as:
+
+```ts
+hasAttackDispatchTarget(collections, bossEnemy): boolean
+```
+
+The tuple and an explicit excluded-key classification must cover every canonical collection key so
+a future collection addition forces a test/code classification decision. ALIVEN's nested-liveness
+case and the scalar boss case must remain explicit.
+
+### Scope
+
+#### Required
+
+1. Add characterization tests for current attack readiness before production edits.
+2. Record the exact 52 participating collection keys and every excluded canonical key.
+3. Add a Node-safe, typed readiness tuple/helper preserving current special cases.
+4. Make `RpgWeaponCtx` and `RpgPlayerAttackCtx` derive their collection fields from
+   `RpgEncounterCollections` and carry the canonical owner reference.
+5. Replace the two hand-written renderer collection wiring lists with one-time composition from
+   `collections`.
+6. Extend the canonical context-wiring test to cover weapon and player-attack contexts.
+7. Preserve direct access expected by existing weapon submodules and attack handlers.
+8. Remove imports made obsolete only by the collection-type migration.
+9. Update the build number and only documentation whose responsibility/status changes.
+
+#### Optional only when mechanically necessary
+
+- Put the readiness helper in `rpg-player-attack.ts` instead of a sibling if doing so remains
+  Node-safe and keeps the policy independently testable.
+- Add a small type alias for the inherited collection portion if it improves compiler diagnostics
+  without creating a new runtime abstraction.
+
+#### Explicitly excluded
+
+- Changing readiness membership, including Stardust or Life behavior.
+- Consolidating the duplicated damage callback APIs.
+- Rewriting weapon submodule contexts or factories.
+- Changing `collectEnemyBodyTargets()`, target priority, line of sight, range, or projectile rules.
+- Centralizing crafted post-hit hooks or implementing TODO gameplay work.
+- Changing attack cooldowns, stats, proc rules, DPS attribution, rewards, or wave completion.
+- Replacing direct access with a service locator, generic manager, registry, visitor, ECS, or event
+  bus.
+- Decomposing `rpg-render.ts`, `rpg-player-attack.ts`, or `rpg-weapon-systems.ts` because of size.
+- DOM/UI, save, settings, audio, asset, platform, or native-wrapper changes.
+
+### Implementation Sequence
+
+1. Read current repository instructions and this entire plan.
+2. Confirm Phase Four is closed at or after `8037940`; do not modify its implementation.
+3. Confirm branch, Build 334 baseline, HEAD/upstream relation, working tree, and intervening commits.
+4. Run baseline typecheck, full tests, lint, web build, and desktop build.
+5. Re-inventory both context interfaces, both renderer construction sites, and the readiness guard;
+   current source overrides the planning counts if it changed.
+6. Add exact current-behavior readiness tests first, including explicit excluded families.
+7. Record the expected red result for the missing helper/profile without weakening existing tests.
+8. Add the Node-safe typed readiness policy and make the characterization suite pass.
+9. Migrate `RpgPlayerAttackCtx` to the canonical owner; run attack/lens/readiness tests.
+10. Migrate `RpgWeaponCtx` to the canonical owner; run weapon/targeting/Life tests.
+11. Replace only the two renderer hand-wiring lists and extend context-identity coverage.
+12. Verify direct aliases are the same arrays as `collections`, including after a reset helper.
+13. Inspect the attack hot path and compiled output enough to confirm no per-frame collection view,
+    object spread, callback closure, reflection, or key discovery was introduced.
+14. Run focused tests, then the complete validation set and practical browser/Electron smoke.
+15. Increment `BUILD_NUMBER` once, update narrowly relevant living docs and this plan, review the
+    full diff, commit, push, and stop after Phase Five.
+
+### Characterization-Test Matrix
+
+| Boundary | Required cases | Preserved result |
+|---|---|---|
+| Profile classification | Exact 52 participating keys, no duplicates, all keys canonical | Current membership only |
+| Exhaustive classification | Participating plus explicit excluded keys equals all 74 canonical keys | New keys require classification |
+| Direct-length families | Representative ordinary, projectile, elite, polyomino, special, procedural, fish, plant projectile, Horizon | Any non-empty participating collection returns true |
+| Empty state | All collections empty, no boss | Returns false; attack dispatch remains skipped |
+| ALIVEN | Empty group list; group with only dead particles; group with one living particle | False; false; true |
+| Boss | Null boss; present boss matching current structural minimum | False; true, with no new HP rule |
+| Suspicious exclusions | Stardust only; Life colony only; representative Nadir only | Preserve current false result and mark as characterization, not endorsement |
+| Context identity | Representative ordinary, projectile, procedural, special, effect arrays | Context aliases and `collections` use identical references |
+| Reset visibility | Seed an aliased array, clear a lifecycle profile | Context sees in-place clear without reconstruction |
+| Dispatch behavior | Empty, ordinary, boss, ALIVEN, Horizon representative attacks | Same handler calls, damage attribution, and early return as baseline |
+| Existing integration | Lens T2/T3, chain, Life targeting, encounter collections, crafted post-hit tests | No weakened or removed coverage |
+
+Use typecheck as the compiler-level proof that context collection fields derive from the canonical
+interface. Do not add filesystem/source-text snapshot tests solely to assert formatting.
+
+### Acceptance Criteria
+
+Phase Five is complete only when:
+
+- both top-level attack contexts derive canonical collection fields instead of redeclaring them;
+- both carry the exact `RpgEncounterCollections` owner created by the renderer;
+- the renderer has no hand-written canonical collection inventory for either context;
+- direct aliases remain stable references and current weapon submodules require no behavioral
+  rewrite;
+- one typed, Node-safe readiness policy replaces the local 51-field destructure/manual sum;
+- all 74 canonical keys are explicitly classified as participating or excluded;
+- exact readiness membership and ALIVEN/Horizon/boss special cases are tested;
+- Stardust, Life, Nadir, and all other current exclusions remain unchanged;
+- no damage callback, target priority, attack handler, cooldown, proc, reward, save, setting, UI, or
+  platform behavior changes;
+- no per-frame array/object/view/closure, reflection, proxy, or dynamic key discovery is added;
+- no `any`, unsafe production cast, weakened lint rule, or weakened test is introduced;
+- Build 335 and narrowly relevant documentation are updated;
+- all focused and complete validation passes, or every nonzero result is classified accurately;
+- implementation and documentation are committed and pushed with a clean synchronized tree.
+
+### Validation Commands
+
+Run and report exact exit codes:
+
+```bash
+npm run typecheck
+npm test
+npm run lint
+npm run build
+npm run build:desktop
+```
+
+Focused validation should include:
+
+- the new attack-readiness characterization suite;
+- `rpg-encounter-collections.test.ts`;
+- `lens-tier2-effects.test.ts` and `lens-tier3-effects.test.ts`;
+- `rpg-weapon-chain.test.ts`;
+- `life-zone.test.ts`;
+- crafted post-hit and target-collection tests available at implementation time.
+
+Browser smoke-test:
+
+- startup and ordinary RPG entry;
+- no-target idle period without spurious attacks;
+- ordinary, projectile-capable, elite/procedural, and boss combat where available;
+- ALIVEN, Horizon, Stardust, and Life only when an unlocked fixture exists;
+- single, multi, AoE, and one delegated weapon family;
+- Equation-to-RPG re-entry, low graphics, and console errors.
+
+Run the hidden Electron startup smoke after the desktop build. Native Android/device validation is
+not required because the phase changes no persistence or platform branch. Do not claim unavailable
+locked-zone coverage.
+
+### Risks and Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Inheriting all canonical arrays unintentionally changes target policy | Readiness remains an exact tested profile; new fields are not consumed automatically. |
+| Object spread creates replacement arrays or enters a hot path | Compose contexts once at renderer creation and assert reference identity; no mapped values. |
+| ALIVEN group length replaces living-particle semantics | Keep an explicit nested `isAlive` scan and test dead-only groups. |
+| Stardust/Life omissions are “fixed” during refactor | Characterize current false result and require a separate evidence-backed behavior change. |
+| Broad context cleanup expands into damage APIs | Exclude callback consolidation and submodule context redesign. |
+| Test mocks become weaker through broad casts | Update mocks with the real canonical factory; reject `any` and production casts. |
+| A new collection bypasses readiness classification later | Test participating plus excluded sets against all canonical keys. |
+| Auto-sync or user changes overlap the plan | Recheck status/HEAD at edit and commit boundaries; preserve unrelated work. |
+
+### Model-Neutral Codex/Claude Instructions
+
+These instructions apply equally to Codex, Claude, and any repository-capable implementation agent.
+
+#### Before editing
+
+- Read `AGENTS.md`, `agents.md`, `CLAUDE.md`, required repo maps/status/TODO/routing/conventions/
+  dependency docs, architecture/decisions, relevant `file_index.md` entries, and this plan in full.
+- Confirm Phases One through Four are complete. Do not repeat their lifecycle, collection-owner,
+  reset-profile, Verdure, or overlay work.
+- Treat current source as authoritative and recalculate counts if commits followed this plan.
+- Preserve unrelated changes and auto-sync commits; never reset or force-checkout them.
+- Record baseline branch, build, HEAD, upstream divergence, working tree, and validation.
+
+#### During implementation
+
+- Add current-behavior characterization tests before production changes.
+- Preserve exact readiness membership, including suspicious exclusions.
+- Use the existing canonical collection owner and stable arrays; do not create a second owner.
+- Keep context composition one-time and attack readiness Node-safe.
+- Retain direct aliases where current submodules require them; do not rewrite submodule APIs.
+- Do not consolidate damage callbacks, targeting, crafted post-hit behavior, or gameplay systems.
+- Do not introduce `any`, reflection, proxies, dynamic key iteration in the attack path, registries,
+  service locators, generic managers, visitors, ECS, or event buses.
+- Run focused tests after readiness, player-attack context, weapon context, and renderer wiring steps.
+
+#### Before delivery
+
+- Increment `BUILD_NUMBER` from the current authoritative value exactly once for implementation;
+  do not bump `SAVE_VERSION`.
+- Update only docs whose current responsibility/status changed and keep the completed phase reports.
+- Run every validation command and report exact exits, warnings, environment failures, and gaps.
+- Inspect hot-path allocation and confirm stable references after reset.
+- Review the complete diff for target-policy or attack behavior drift.
+- Commit and push according to repository instructions, confirm local/upstream equality and a clean
+  tree, then stop after Phase Five.
+
+### Planning-Run Validation
+
+| Command / check | Result | Classification |
+|---|---:|---|
+| Phase Four closeout commit audit | `8037940`; only `RefactorPlan.md` | Passed |
+| Branch/upstream before planning | `main`, ahead 0, behind 0, clean | Passed |
+| Build source | `BUILD_NUMBER = 334` | Passed |
+| `npm run typecheck` | Exit 0 | Passed |
+| `npm run lint` | Exit 0 | Passed |
+| Restricted `npm test` first attempt | Exit 1 before config load | Environmental sandbox/esbuild access failure |
+| Approved `npm test` rerun | Exit 0; 73 files, 1487 tests | Passed; existing Boss MIDI invalid-URL stderr remained |
+| `npm run build` | Exit 0; 441 modules | Passed with existing chunk-size warning |
+| `npm run build:desktop` | Exit 0; 441 modules | Passed with existing chunk-size warning |
+
+No source, test, build-number, save-version, or implementation change was made during Phase Five
+planning.
+
+### Exact Implementation Prompt
+
+> Work on Phase Five, “Canonical Attack Context and Readiness Policy,” in `RefactorPlan.md`. Follow
+> all repository and phase instructions, add characterization tests first, preserve exact current
+> readiness membership and attack behavior, update the plan throughout, validate fully, commit and
+> push, and stop after Phase Five.
