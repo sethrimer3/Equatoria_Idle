@@ -56,6 +56,15 @@ export function createSettingsPanel(
   title.textContent = 'Settings';
   panel.appendChild(title);
 
+  const discordLink = document.createElement('a');
+  discordLink.className = 'settings-discord-btn';
+  discordLink.href = 'https://discord.gg/dSwR3Fj7du';
+  discordLink.target = '_blank';
+  discordLink.rel = 'noopener noreferrer';
+  discordLink.setAttribute('aria-label', 'Join the Equatoria Idle Discord server');
+  discordLink.innerHTML = '<span class="settings-discord-btn__icon" aria-hidden="true">Discord</span><span><strong>Join the Discord</strong><small>Community, updates, and support</small></span>';
+  panel.appendChild(discordLink);
+
   // ── Sub-tab bar ──────────────────────────────────────────────────
 
   const subTabBar = document.createElement('div');

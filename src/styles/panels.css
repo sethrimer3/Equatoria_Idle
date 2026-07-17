@@ -272,6 +272,61 @@
 }
 
 /* ── Settings panel ──────────────────────────────────────────── */
+.settings-discord-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  margin: 4px 0 14px;
+  padding: 10px 14px;
+  border: 2px solid #aeb8ff;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5865f2, #3f48bd);
+  box-shadow: 0 0 18px rgba(88, 101, 242, 0.55);
+  color: #fff;
+  text-align: left;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+
+.settings-discord-btn:hover,
+.settings-discord-btn:focus-visible {
+  filter: brightness(1.12);
+  box-shadow: 0 0 26px rgba(88, 101, 242, 0.8);
+  transform: translateY(-1px);
+}
+
+.settings-discord-btn:active {
+  transform: translateY(1px);
+}
+
+.settings-discord-btn__icon {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: calc(11px + var(--game-font-size-offset-px));
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-discord-btn strong,
+.settings-discord-btn small {
+  display: block;
+}
+
+.settings-discord-btn strong {
+  font-size: calc(17px + var(--game-font-size-offset-px));
+}
+
+.settings-discord-btn small {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: calc(11px + var(--game-font-size-offset-px));
+}
+
 .settings-row {
   display: flex;
   align-items: center;
