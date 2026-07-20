@@ -72,7 +72,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
   const { canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt, onZoneLabelTap } = ctx;
   let isDisposed = false;
 
-  const ZONE_SELECTION_SPRITE_SIZE = 120;
+  const ZONE_SELECTION_SPRITE_SIZE = 84;
   const ZONE_SELECTION_OVERLAY_HEIGHT = ZONE_SELECTION_SPRITE_SIZE + 6 + ((Math.round(14 * 0.7) + 5) * 2) + 8;
   const ZONE_SELECTION_MARGIN = 8;
 

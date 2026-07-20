@@ -43,7 +43,7 @@ import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { onZoneEntered } from '../../achievements/achievementHooks';
 import { getBossTempoBpm } from '../../data/rpg/boss-tempo-config';
 import { CASSETTE_START_PATH, CASSETTE_END_PATH, getBossBeatLoopPath, getRandomBossMusicTrack } from '../../audio/audio-paths';
-import { startBossIntro, onBossIntroCassetteStarted, onBossIntroCassetteDone, resetBossIntro } from './boss-intro-director';
+import { hasBossFightStarted, startBossIntro, resetBossIntro } from './boss-intro-director';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import {
@@ -1610,47 +1610,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         bossTrackTitle = selectedTrack?.title ?? null;
 
         startBossIntro(boss.x, boss.y, () => {
-          // Spawn circle animation complete — play cassette now.
-          if (options.onBossCassetteStart) {
-            onBossIntroCassetteStarted();
-            options.onBossCassetteStart(CASSETTE_START_PATH, () => {
-              // Cassette finished — start boss music and begin fight.
-              if (selectedTrack) {
-                spawnDamageNumber(
-                  dim.w / 2,
-                  dim.h - 18,
-                  0,
-                  -1,
-                  selectedTrack.title,
-                  1,
-                  BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
-                );
-              }
-              options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
-                bossTrackDurationMs = durationMs;
-              });
-              onBossIntroCassetteDone();
-            });
-          } else {
-            // Fallback: no cassette callback, start music immediately.
-            onBossIntroCassetteStarted();
-            if (selectedTrack) {
-              spawnDamageNumber(
-                dim.w / 2,
-                dim.h - 18,
-                0,
-                -1,
-                selectedTrack.title,
-                1,
-                BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
-              );
-            }
-            options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
-              bossTrackDurationMs = durationMs;
-            });
-            onBossIntroCassetteDone();
-          }
+          // Shared downbeat: boss reveal, attack clock, music, and progress bar.
+          bossAttackState.elapsedFightMs = 0;
+          notifyBossSpawned(boss);
+          options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
+            bossTrackDurationMs = durationMs;
+          });
         });
+        // Cassette and title begin with the circle's first frame.
+        options.onBossCassetteStart?.(CASSETTE_START_PATH, () => undefined);
+        if (selectedTrack) {
+          spawnDamageNumber(
+            dim.w / 2,
+            dim.h - 18,
+            0,
+            -1,
+            selectedTrack.title,
+            1,
+            BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
+          );
+        }
       }
     },
     onExitBossWave:             () => {
@@ -1665,7 +1644,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
     },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
-    onBossSpawned:              (boss) => { ensureBossMidiLoaded(bossMidiState, boss.bossId); notifyBossSpawned(boss); },
+    onBossSpawned:              (boss) => { ensureBossMidiLoaded(bossMidiState, boss.bossId); },
     onBossDamaged:              (boss, damageAmount) => notifyBossDamaged(boss, damageAmount),
     onBossEvent:                (boss, eventType) => notifyBossEvent(boss, eventType),
   });
@@ -1958,7 +1937,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsInterWave:               () => isInterWave,
     getCurrentWave:               () => currentWave,
     getInterWaveTimerMs:          () => interWaveTimerMs,
-    getIsBossWaveActive:          () => isBossWaveActive,
+    getIsBossWaveActive:          () => isBossWaveActive && hasBossFightStarted(),
     getBossTrackDurationMs:       () => bossTrackDurationMs,
     getBossTrackTitle:            () => bossTrackTitle,
     getDeathBannerText:           () => deathBannerText,

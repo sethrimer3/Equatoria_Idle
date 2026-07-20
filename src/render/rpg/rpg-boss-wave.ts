@@ -204,7 +204,8 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
   }
 
   function startBossFight(bossId: number): void {
-    if (ctx.getIsBossWaveActive()) return;
+    // Boss selection can jump directly between encounters.
+    if (ctx.getIsBossWaveActive()) exitBossWave();
     const waveForScaling = Math.max(bossId * 100, ctx.rpgSimState.highestWaveReached);
     const boss = makeBossEnemy(bossId, waveForScaling, ctx.dim.w, ctx.dim.h);
     ctx.setBossEnemy(boss);

@@ -35,6 +35,7 @@ export class BossMusicPlayer {
 
   stop(): void {
     this._fadeOutLoops(0.2);
+    this._stopOneShots();
   }
 
   stopWithCassette(cassetteEndPath: string, onDone: () => void): void {
@@ -178,6 +179,15 @@ export class BossMusicPlayer {
         onDone();
       }
     });
+  }
+
+  private _stopOneShots(): void {
+    for (const source of this._oneShots) {
+      source.onended = null;
+      try { source.stop(); } catch { /* already stopped */ }
+      try { source.disconnect(); } catch { /* already disconnected */ }
+    }
+    this._oneShots.clear();
   }
 
   dispose(): void {

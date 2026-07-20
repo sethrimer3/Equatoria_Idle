@@ -123,6 +123,17 @@
   outline-offset: -1px;
 }
 
+#rpg-area.rpg-area--zone-select-open {
+  overflow: visible;
+  z-index: 10;
+}
+
+#rpg-zone-select {
+  box-shadow: 0 0 0 100vmax #000;
+  outline: 2px solid rgba(255, 209, 72, 0.96);
+  outline-offset: -2px;
+}
+
 /*
  * The RPG canvas fills its #rpg-area wrapper 100%×100%.
  * Its backing store is updated on every resize to CSS size × DPR, so
@@ -1228,7 +1239,7 @@
 
 .rpg-codex-shortcut__sprite {
   position: absolute;
-  inset: 0;
+  inset: -10%;
   display: block;
   animation: rpg-codex-soft-bob 2.9s ease-in-out infinite;
   will-change: transform;

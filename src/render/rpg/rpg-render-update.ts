@@ -76,7 +76,7 @@ import {
 import { updateStardustEnemies, type StardustUpdateCtx } from './rpg-stardust-update';
 import { updateHorizonPentagonGroups } from './horizon-pentagon-update';
 import { updateSpawnFlashes } from './rpg-spawn-flash';
-import { updateBossIntro } from './boss-intro-director';
+import { hasBossFightStarted, updateBossIntro } from './boss-intro-director';
 import { updateDyingEnemies } from './rpg-death-fade';
 import {
   updatePolyominoEnemies,
@@ -506,7 +506,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   const bossEnemy = ctx.getBossEnemy();
   tickBossDialogue(deltaMs, bossEnemy);
-  if (bossEnemy) {
+  if (bossEnemy && hasBossFightStarted()) {
     const bossSpeedMult = ctx.getIsBossWaveActive() ? (ctx.rpgSimState.bossSpeedPct / 100) : 1;
     updateBossEnemy(bossEnemy, ctx.bossCtx, deltaMs * bossSpeedMult);
     updateBossProjectiles(a.bossProjectiles, ctx.bossCtx, deltaMs * bossSpeedMult);

@@ -1185,7 +1185,7 @@ export function drawRpgFrame(
   const currentWave = ctx.getCurrentWave();
   updateOverlayFadeAlpha(ctx, state, fs);
   if (currentWave > 0) {
-    const iconSize = 120;
+    const iconSize = 84;
     const textFontSize = Math.round(14 * 0.7); // 30% smaller than base
     const textLineH = textFontSize + 5;
     const textBlockH = textLineH * 2;

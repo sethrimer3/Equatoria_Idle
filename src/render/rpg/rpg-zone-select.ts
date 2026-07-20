@@ -1249,6 +1249,7 @@ export function createRpgZoneSelectPanel(
 
     open(): void {
       if (_isDisposed) return;
+      overlay.parentElement?.classList.add('rpg-area--zone-select-open');
       overlay.style.display = 'block';
       _isOpen   = true;
       hoveredId = null;
@@ -1267,6 +1268,7 @@ export function createRpgZoneSelectPanel(
     close(): void {
       if (_isDisposed) return;
       overlay.style.display = 'none';
+      overlay.parentElement?.classList.remove('rpg-area--zone-select-open');
       _isOpen = false;
       cancelAnimationFrame(_rafId);
     },
@@ -1285,6 +1287,7 @@ export function createRpgZoneSelectPanel(
       _isOpen = false;
       cancelAnimationFrame(_rafId);
       ptrs.clear();
+      overlay.parentElement?.classList.remove('rpg-area--zone-select-open');
       overlay.remove();
     },
   };
