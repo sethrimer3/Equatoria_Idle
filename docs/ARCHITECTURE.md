@@ -66,7 +66,7 @@ The main loop is created in `src/app/app-game-loop.ts`. At a high level it:
 
 1. Advances simulation ticks and timers.
 2. Advances forge warm-up/crunch state.
-3. Updates particles and capture fields.
+3. Advances particles and capture fields.
 4. Updates background/render systems.
 5. Renders the current active view.
 6. Computes forge preview display data.
@@ -198,7 +198,7 @@ Builds 201-206 added the first major crafted weapon implementation:
 - Total weighted mote value derives base level and base stat multiplier.
 - Amethyst ships, crit, armor ignore, poison bonus, Emerald acquisition range, Nullstone pull, and Fracteryl follow-ups have first-pass hooks.
 
-Open design/implementation areas remain in `docs/TODO.md` and `nextSteps.md`, especially Eigenstein, visual polish, centralizing crafted post-hit hooks, and balance.
+Open design/implementation areas remain in `docs/Todo.md` and `nextSteps.md`, especially Eigenstein, visual polish, centralizing crafted post-hit hooks, and balance.
 
 ## Save/load architecture
 
@@ -250,7 +250,7 @@ Use the docs as layers:
 7. `docs/CONVENTIONS.md`: naming, state, rendering, and testing rules.
 8. `docs/DEPENDENCY_MAP.md`: module dependency hierarchy.
 9. `docs/CURRENT_STATUS.md`: current status, recent builds, known limitations.
-10. `docs/TODO.md`: condensed actionable tasks.
+10. `docs/Todo.md`: canonical operational task queue.
 11. `docs/CHANGELOG_FOR_AGENTS.md`: structural change log for agents.
 12. Root `file_index.md`: detailed file-level map.
 13. Root `ARCHITECTURE.md` and `DECISIONS.md`: deeper historical/technical references.
@@ -263,4 +263,4 @@ Use the docs as layers:
 - Using static weapon maps where crafted weapon ids require dynamic resolver support.
 - Changing canvas CSS and accidentally changing gameplay scale or coordinate assumptions.
 - Adding visual effects that ignore low-graphics mode or mobile performance.
-- Updating behavior without updating `docs/CURRENT_STATUS.md`, `docs/TODO.md`, or `file_index.md`.
+- Updating behavior without updating `docs/CURRENT_STATUS.md`, `docs/Todo.md`, or `file_index.md`.
