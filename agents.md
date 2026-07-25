@@ -8,7 +8,7 @@ This is the short, high-signal entry point for AI coding agents. The longer lega
 2. `docs/REPO_MAP.md` — compact folder map with HIGH VALUE / CAUTION / IGNORE labels.
 3. `docs/AI_REPO_MAP.md` — extended orientation: per-subsystem risks and routing table.
 4. `docs/CURRENT_STATUS.md` — current build, recent work, known incomplete areas.
-5. `docs/TODO.md` — condensed task list and deferred work.
+5. `docs/Todo.md` — canonical operational task queue and deferred work.
 6. `docs/AI_TASK_ROUTING.md` — task-type routing: first files, keywords, pitfalls, verify commands.
 7. `file_index.md` — detailed per-file reference when a subsystem needs deeper inspection.
 8. `docs/FILE_GUIDE.md` — per-file responsibilities grouped by system with risk labels.
@@ -24,6 +24,16 @@ This is the short, high-signal entry point for AI coding agents. The longer lega
 - **Economy/gameplay** → step 6
 - **RPG content** → step 6
 - **New file** → steps 2–4, then step 8 to find the right system
+
+## Operational Todo commands
+
+When the user says **“Do a task from Todo.md,” “Do the next task from Todo.md,”** or equivalent, follow the queue protocol in `docs/Todo.md`:
+
+- Work on the first unchecked item unless the user names another task.
+- Search `nextSteps.md` for relevant history or unfinished work before implementation.
+- Mark the item complete only after the work is genuinely complete and committed.
+- Put any incomplete work, failures, blockers, and exact next actions into `nextSteps.md`.
+- In the final response, report what changed, validation results, and the exact number of unchecked Todo items remaining.
 
 ## Minimal-context workflow
 
@@ -55,7 +65,7 @@ npm run lint
 
 - Increment `BUILD_NUMBER` by 1 for code changes or implementation PRs.
 - Documentation-only changes do not need a build bump unless the user explicitly requests one.
-- If a code change is incomplete because validation fails, do not claim it is complete. Record the exact failure and next step in `docs/TODO.md` or `nextSteps.md`.
+- If a code change is incomplete because validation fails, do not claim it is complete. Record the exact failure and next step in `docs/Todo.md` or `nextSteps.md`.
 
 ## Repository-specific constraints
 
@@ -91,7 +101,7 @@ When a change affects repo orientation:
 - Update `docs/AI_REPO_MAP.md` when files are added, removed, split, or their responsibility changes.
 - Update `docs/FILE_GUIDE.md` when file-level responsibilities change.
 - Update `docs/CURRENT_STATUS.md` when a major feature is completed or a current limitation changes.
-- Update `docs/TODO.md` when work is deferred, discovered, completed, or superseded.
+- Update `docs/Todo.md` when work is deferred, discovered, completed, or superseded.
 - Update `docs/CHANGELOG_FOR_AGENTS.md` for significant architectural changes.
 - Update root `ARCHITECTURE.md` or `DECISIONS.md` only for durable architecture or technical decision changes.
 - Update `file_index.md` when detailed file-level summaries change.
