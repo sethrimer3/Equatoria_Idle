@@ -1,23 +1,5 @@
 # Equatoria Idle Agent Entry Point
 
-## Main-only Git and auto-sync policy
-
-All AI coding work is performed directly on `main`. Before investigation that may lead to
-edits, verify this is Equatoria Idle on `main`, inspect `.git/AGENT_WORK_ACTIVE`, and run
-`powershell -ExecutionPolicy Bypass -File .\scripts\pause-autosync.ps1`. Stop if another
-active coding task owns the marker.
-
-Keep auto-sync paused through investigation, editing, tests, builds, commits,
-synchronization, conflict resolution, and pushes. Do not create or use a feature branch or
-pull request unless the user explicitly requests one. Use fast-forward-only synchronization,
-never force-push, commit one coherent change directly to `main`, and verify the exact commit
-on `origin/main` before running `scripts/resume-autosync.ps1`.
-
-On interruption, validation failure, conflict, or push/verification failure, leave auto-sync
-paused, preserve unfinished work and the agent marker, and report the exact state. Never
-discard unrelated work, let auto-sync commit agent work, or allow concurrent coding agents.
-See [`docs/AUTOSYNC_WORKFLOW.md`](docs/AUTOSYNC_WORKFLOW.md).
-
 This is the short, high-signal entry point for AI coding agents. The longer legacy guideline file is `agents.md`; keep it as the detailed policy reference.
 
 ## Main-only Git and auto-sync policy

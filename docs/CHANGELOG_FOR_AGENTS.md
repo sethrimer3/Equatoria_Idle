@@ -2,6 +2,12 @@
 
 Lightweight log of architectural facts discovered and major structural changes. Future agents should append significant architectural changes here. Keep entries short and factual.
 
+## 2026-07-29 — Main-only pause-aware auto-sync (build 348)
+
+- Replaced branch-per-task guidance with a main-only AI workflow.
+- Added pause, resume, status, and guarded scheduled auto-sync PowerShell entrypoints.
+- Documented `.git` pause, running-lock, and agent-work markers plus legacy branch review.
+
 ---
 
 ## 2026-07-13 — Canonical attack context and readiness policy (build 335)

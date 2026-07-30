@@ -1,5 +1,12 @@
 # Equatoria Idle Current Status
 
+## Build 348 — main-only, pause-aware local auto-sync
+
+The scheduled Equatoria Idle sync path now delegates to repository-local PowerShell tooling
+that validates `main`, honors `.git/AUTOSYNC_PAUSED`, serializes runs with a conservative
+lock, and stops on Git failures. AI guidance now requires one agent on `main`, with remote
+verification before auto-sync resumes. See `docs/AUTOSYNC_WORKFLOW.md`.
+
 ## Build 335: canonical attack context and readiness policy
 
 - The top-level player-attack and weapon-system contexts now derive encounter arrays from
