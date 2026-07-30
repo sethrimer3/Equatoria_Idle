@@ -51,3 +51,4 @@ src/
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed system documentation.
 See [DECISIONS.md](./DECISIONS.md) for technical decision rationale.
 See [file_index.md](./file_index.md) for per-file documentation.
+See [docs/AUTOSYNC_WORKFLOW.md](./docs/AUTOSYNC_WORKFLOW.md) for the main-only AI and local auto-sync workflow.

@@ -1,6 +1,45 @@
 # Equatoria Idle Agent Entry Point
 
+## Main-only Git and auto-sync policy
+
+All AI coding work is performed directly on `main`. Before investigation that may lead to
+edits, verify this is Equatoria Idle on `main`, inspect `.git/AGENT_WORK_ACTIVE`, and run
+`powershell -ExecutionPolicy Bypass -File .\scripts\pause-autosync.ps1`. Stop if another
+active coding task owns the marker.
+
+Keep auto-sync paused through investigation, editing, tests, builds, commits,
+synchronization, conflict resolution, and pushes. Do not create or use a feature branch or
+pull request unless the user explicitly requests one. Use fast-forward-only synchronization,
+never force-push, commit one coherent change directly to `main`, and verify the exact commit
+on `origin/main` before running `scripts/resume-autosync.ps1`.
+
+On interruption, validation failure, conflict, or push/verification failure, leave auto-sync
+paused, preserve unfinished work and the agent marker, and report the exact state. Never
+discard unrelated work, let auto-sync commit agent work, or allow concurrent coding agents.
+See [`docs/AUTOSYNC_WORKFLOW.md`](docs/AUTOSYNC_WORKFLOW.md).
+
 This is the short, high-signal entry point for AI coding agents. The longer legacy guideline file is `agents.md`; keep it as the detailed policy reference.
+
+## Main-only Git and auto-sync policy
+
+All AI coding work is performed directly on `main`. Before investigation that may lead to
+edits, verify this is Equatoria Idle on `main`, inspect `.git/AGENT_WORK_ACTIVE`, and run
+`powershell -ExecutionPolicy Bypass -File .\scripts\pause-autosync.ps1`. Stop if another
+active coding task owns the marker.
+
+Keep auto-sync paused throughout investigation, implementation, assets, save-schema or
+balance work, tests, builds, commits, synchronization, conflict resolution, and pushing.
+Do not create, switch to, or push a feature branch or open a pull request unless the user
+explicitly requests it. When the tree permits, update with a safe fast-forward-only pull.
+Run narrow validation first, then broader checks when practical. Commit one coherent change
+directly to `main`, synchronize conservatively, push without force, and verify the exact
+commit on `origin/main` before running `scripts/resume-autosync.ps1`.
+
+If work is interrupted, fails validation, conflicts, or cannot be pushed and verified,
+leave it uncommitted where possible, leave auto-sync paused, preserve the agent marker, and
+report the exact state. Never discard unrelated changes or use auto-sync as the agent's
+final commit mechanism. Never begin a second coding task concurrently. Read
+[`docs/AUTOSYNC_WORKFLOW.md`](docs/AUTOSYNC_WORKFLOW.md) for commands and recovery details.
 
 ## Required read order before editing
 

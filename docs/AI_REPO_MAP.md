@@ -5,6 +5,9 @@ Current build at verification: 206
 
 Purpose: help AI agents orient quickly without scanning the entire repository. Use this file to choose the smallest relevant source set before reading code.
 
+Operational Git automation is documented in `docs/AUTOSYNC_WORKFLOW.md`. Repository-local
+pause, resume, status, and scheduled sync entrypoints live under `scripts/autosync*.ps1`.
+
 ## Project summary
 
 Equatoria Idle is a Vite + TypeScript mobile-first web game with Electron desktop support. It combines:

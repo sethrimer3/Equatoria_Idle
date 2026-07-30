@@ -6,6 +6,16 @@ Per-file responsibilities grouped by system. For full-size file index see `file_
 
 Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; **IGNORE** = generated/asset/legacy
 
+## scripts/ — Operational tooling
+
+| File | Responsibility | Edit risk |
+|---|---|---|
+| `autosync.ps1` | Main-only, pause-aware Scheduled Task entrypoint | CAUTION — commits and synchronizes Git state |
+| `autosync-common.ps1` | Repository validation, marker, lock, and Git-operation helpers | CAUTION — shared by all auto-sync commands |
+| `pause-autosync.ps1` | Idempotently pause sync and claim agent work | SAFE |
+| `resume-autosync.ps1` | Guarded pause/agent-marker removal after remote verification | CAUTION — re-enables scheduled behavior |
+| `autosync-status.ps1` | Read-only repository, marker, scheduler, and divergence report | SAFE |
+
 ---
 
 ## src/app/ — Orchestration
