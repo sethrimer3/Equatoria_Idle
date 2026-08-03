@@ -358,7 +358,7 @@ Intentional safe-core elements:
 
 ## Important current known limitations
 
-1. Eigenstein crafted weapon behavior is intentionally unresolved and should not be invented casually.
+1. Eigenstein crafted weapons use the Build #207 dimensional sword first pass: a stable hilt/crossguard, shifting blade polygons, localized rift slashes, and capped per-enemy rift-damage accumulation. Per-enemy rift tinting, secondary crack branching, dedicated fluid colors, and soft-cap tuning remain deferred.
 2. Nullstone crafted pull needs visible black-hole/vortex feedback and likely multi-frame force behavior.
 3. Fracteryl crafted recursive strikes need visual feedback, safety guards, and a deliberate retargeting/branching decision.
 4. Crafted post-hit hooks are not centralized across all attack families.
@@ -370,14 +370,13 @@ Intentional safe-core elements:
 
 ## Current near-term priorities
 
-1. Design and implement Eigenstein as a deliberate endgame crafted weapon behavior.
-2. Centralize crafted post-hit modifier handling so Nullstone/Fracteryl and future modifiers can apply safely across weapon families.
-3. Improve Nullstone pull visuals and force behavior with strict caps.
-4. Improve Fracteryl visuals/safety and decide whether repeats retarget, stay on target, or branch.
-5. Add broader combat tests for crafted modifier hooks.
-6. Playtest crafted weapon coefficients, caps, capacity, refined crystal threshold, and high-tier weight scaling.
-7. Clean up stale `forge.forgeCraftLevel` save field in a future migration.
-8. Continue Google Play readiness work only after deciding native-wrapper approach.
+1. Centralize crafted post-hit modifier handling so Nullstone/Fracteryl and future modifiers can apply safely across weapon families.
+2. Improve Nullstone pull visuals and force behavior with strict caps.
+3. Improve Fracteryl visuals/safety and decide whether repeats retarget, stay on target, or branch.
+4. Add broader combat tests for crafted modifier hooks.
+5. Playtest crafted weapon coefficients, caps, capacity, refined crystal threshold, and high-tier weight scaling.
+6. Clean up stale `forge.forgeCraftLevel` save field in a future migration.
+7. Continue Google Play readiness work only after deciding native-wrapper approach.
 
 ## Agent cautions
 

@@ -23,10 +23,7 @@ If a task is too broad for one safe change, complete the largest coherent, valid
 
 ## High priority
 
-- [ ] Design Eigenstein crafted weapon behavior deliberately before implementation.
-  - Current direction: endgame/rule-altering mote, not a casually invented generic damage modifier.
-  - Recent user direction: a larger unstable sword-family weapon can reuse Sand/Diamond sword architecture where possible, with stable hilt/crossguard, shifting blade polygons, and a localized Substrate-style slash/rift.
-  - First gameplay effect under consideration: per-enemy compounding damage where each enemy tracks its own Eigenstein accumulation; accumulation resets on death/despawn and does not transfer between enemies.
+- [x] Design Eigenstein crafted weapon behavior deliberately before implementation. Completed in Build #207: Eigenstein-dominant crafted weapons use the dimensional sword family, with a stable hilt/crossguard, shifting blade polygons, localized rift slashes, and per-enemy capped rift-damage accumulation isolated by weapon and enemy identity.
 
 - [ ] Implement Eigenstein crafted weapon first pass after design is confirmed in code comments/docs.
   - Add data modifier(s), resolver support, combat hook, visuals, tests, UI lines, and save-safe behavior.
